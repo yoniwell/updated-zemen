@@ -1,0 +1,33 @@
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+.animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+.animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+/* Make inner form controls visually borderless when inside the CMS editor panels */
+.content-manager-dialog .rounded-xl input,
+.content-manager-dialog .rounded-xl textarea,
+.content-manager-dialog .rounded-xl select {
+  border: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.content-manager-dialog .rounded-xl input:focus,
+.content-manager-dialog .rounded-xl textarea:focus,
+.content-manager-dialog .rounded-xl select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}

@@ -1,0 +1,793 @@
+{
+  "generatedAt": "2026-04-01T15:58:55.771Z",
+  "baseUrl": "http://localhost:3000",
+  "viewportCount": 4,
+  "summary": {
+    "totalChecks": 56,
+    "passed": 44,
+    "failed": 0,
+    "skipped": 12
+  },
+  "notes": [
+    "Automated checks cover measurable layout and interaction signals only.",
+    "Visual nuance checks (contrast over imagery, typography quality, motion preference behavior) still require manual validation."
+  ],
+  "viewports": [
+    {
+      "viewport": {
+        "name": "320x800",
+        "width": 320,
+        "height": 800
+      },
+      "routes": [
+        {
+          "route": "/",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320,
+            "conversionActionsInFirstViewport": 3,
+            "sampleActions": [
+              "Become a Member",
+              "Apply Loan",
+              "Track Application"
+            ]
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__home.png"
+        },
+        {
+          "route": "/membership",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__membership.png"
+        },
+        {
+          "route": "/loans",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__loans.png"
+        },
+        {
+          "route": "/services",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__services.png"
+        },
+        {
+          "route": "/about",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__about.png"
+        },
+        {
+          "route": "/news",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__news.png"
+        },
+        {
+          "route": "/contact",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__contact.png"
+        },
+        {
+          "route": "/membership-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__membership-apply.png"
+        },
+        {
+          "route": "/loan-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__loan-apply.png"
+        },
+        {
+          "route": "/status",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__status.png"
+        },
+        {
+          "route": "/news/nnm-mbm",
+          "category": "public-news-detail",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 320,
+            "pageScrollWidth": 320
+          },
+          "failures": [],
+          "screenshot": "screenshots/320x800__news__nnm-mbm.png"
+        },
+        {
+          "route": "/admin",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/membership-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/loan-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "375x812",
+        "width": 375,
+        "height": 812
+      },
+      "routes": [
+        {
+          "route": "/",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375,
+            "conversionActionsInFirstViewport": 3,
+            "sampleActions": [
+              "Become a Member",
+              "Apply Loan",
+              "Track Application"
+            ]
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__home.png"
+        },
+        {
+          "route": "/membership",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__membership.png"
+        },
+        {
+          "route": "/loans",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__loans.png"
+        },
+        {
+          "route": "/services",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__services.png"
+        },
+        {
+          "route": "/about",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__about.png"
+        },
+        {
+          "route": "/news",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__news.png"
+        },
+        {
+          "route": "/contact",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__contact.png"
+        },
+        {
+          "route": "/membership-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__membership-apply.png"
+        },
+        {
+          "route": "/loan-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__loan-apply.png"
+        },
+        {
+          "route": "/status",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__status.png"
+        },
+        {
+          "route": "/news/nnm-mbm",
+          "category": "public-news-detail",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 375,
+            "pageScrollWidth": 375
+          },
+          "failures": [],
+          "screenshot": "screenshots/375x812__news__nnm-mbm.png"
+        },
+        {
+          "route": "/admin",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/membership-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/loan-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "768x1024",
+        "width": 768,
+        "height": 1024
+      },
+      "routes": [
+        {
+          "route": "/",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768,
+            "conversionActionsInFirstViewport": 3,
+            "sampleActions": [
+              "Become a Member",
+              "Apply Loan",
+              "Track Application"
+            ]
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__home.png"
+        },
+        {
+          "route": "/membership",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__membership.png"
+        },
+        {
+          "route": "/loans",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__loans.png"
+        },
+        {
+          "route": "/services",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__services.png"
+        },
+        {
+          "route": "/about",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__about.png"
+        },
+        {
+          "route": "/news",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__news.png"
+        },
+        {
+          "route": "/contact",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__contact.png"
+        },
+        {
+          "route": "/membership-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__membership-apply.png"
+        },
+        {
+          "route": "/loan-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__loan-apply.png"
+        },
+        {
+          "route": "/status",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__status.png"
+        },
+        {
+          "route": "/news/nnm-mbm",
+          "category": "public-news-detail",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 768,
+            "pageScrollWidth": 768
+          },
+          "failures": [],
+          "screenshot": "screenshots/768x1024__news__nnm-mbm.png"
+        },
+        {
+          "route": "/admin",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/membership-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/loan-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        }
+      ]
+    },
+    {
+      "viewport": {
+        "name": "1024x768",
+        "width": 1024,
+        "height": 768
+      },
+      "routes": [
+        {
+          "route": "/",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024,
+            "conversionActionsInFirstViewport": 3,
+            "sampleActions": [
+              "Become a Member",
+              "Apply Loan",
+              "Track Application"
+            ]
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__home.png"
+        },
+        {
+          "route": "/membership",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__membership.png"
+        },
+        {
+          "route": "/loans",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__loans.png"
+        },
+        {
+          "route": "/services",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__services.png"
+        },
+        {
+          "route": "/about",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__about.png"
+        },
+        {
+          "route": "/news",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__news.png"
+        },
+        {
+          "route": "/contact",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__contact.png"
+        },
+        {
+          "route": "/membership-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__membership-apply.png"
+        },
+        {
+          "route": "/loan-apply",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024,
+            "hasProgressPanel": true,
+            "hasMobileStickyActionBar": true,
+            "stickyBottomInsideViewport": true
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__loan-apply.png"
+        },
+        {
+          "route": "/status",
+          "category": "public",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__status.png"
+        },
+        {
+          "route": "/news/nnm-mbm",
+          "category": "public-news-detail",
+          "status": "PASS",
+          "checks": {
+            "noHorizontalOverflow": true,
+            "hasHeaderOrNav": true,
+            "viewportWidth": 1024,
+            "pageScrollWidth": 1024
+          },
+          "failures": [],
+          "screenshot": "screenshots/1024x768__news__nnm-mbm.png"
+        },
+        {
+          "route": "/admin",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/membership-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        },
+        {
+          "route": "/admin/loan-queue",
+          "category": "admin",
+          "status": "SKIP",
+          "checks": {},
+          "failures": [
+            "Admin login remained on login page"
+          ],
+          "screenshot": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+export const BRANCH_OPTIONS = [
+  'Mekelle Head Office',
+  'Mekelle Branch',
+  'Addis Abeba',
+  'Adigrat',
+  'AbiAdi',
+  'Maychow',
+  'Adwa',
+  'Shire',
+  'Rama',
+] as const;
+
+export const APPLICANT_TYPE_OPTIONS = ['INDIVIDUAL', 'BUSINESS'] as const;
+
+export const MEMBERSHIP_PRODUCT_OPTIONS = ['REGULAR', 'YOUTH', 'WOMEN', 'BUSINESS'] as const;
+
+export const LOAN_TYPE_OPTIONS = [
+  'REGULAR_LOAN',
+  'SPECIAL_SHORT_TERM_LOAN',
+  'SHORT_TERM_LOAN',
+  'INTERMEDIATE_TERM_LOAN',
+  'LONG_TERM_LOAN',
+  'NON_INTERESTS_LOAN',
+  'VEHICLES_AND_HOUSE_LOAN',
+] as const;
+
+export const APPLICATION_STATUS_OPTIONS = [
+  'DRAFT',
+  'SUBMITTED',
+  'UNDER_REVIEW',
+  'KYC_VERIFICATION',
+  'PENDING_DOCUMENTS',
+  'PENDING_CLARIFICATION',
+  'APPROVED',
+  'REJECTED',
+  'ACTIVATED',
+] as const;
+
+export const MEMBERSHIP_QUEUE_STATUS_OPTIONS = [
+  'DRAFT',
+  'SUBMITTED',
+  'UNDER_REVIEW',
+  'KYC_VERIFICATION',
+  'PENDING_DOCUMENTS',
+  'PENDING_CLARIFICATION',
+  'REJECTED',
+] as const;
+
+export const LOAN_QUEUE_STATUS_OPTIONS = [
+  'DRAFT',
+  'SUBMITTED',
+  'UNDER_REVIEW',
+  'KYC_VERIFICATION',
+  'PENDING_DOCUMENTS',
+  'PENDING_CLARIFICATION',
+  'REJECTED',
+] as const;

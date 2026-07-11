@@ -1,0 +1,650 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Branch {
+  id                     String                  @id @default(uuid())
+  name                   String                  @unique
+  code                   String                  @unique
+  location               String
+  manager                String?
+  status                 String                  @default("OPERATIONAL")
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  adminUsers             AdminUser[]
+  loanApplications       LoanApplication[]
+  membershipApplications MembershipApplication[]
+
+  @@map("branches")
+}
+
+model Applicant {
+  id                     String                  @id @default(uuid())
+  firstName              String
+  middleName             String?
+  lastName               String
+  dob                    DateTime?
+  gender                 Gender?
+  nationality            String?                 @default("Ethiopian")
+  phone                  String                  @unique
+  email                  String?
+  region                 String?
+  city                   String?
+  subCity                String?
+  woreda                 String?
+  address                String?
+  idType                 String?
+  idNumber               String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  loanApplications       LoanApplication[]
+  membershipApplications MembershipApplication[]
+
+  @@map("applicants")
+}
+
+model MembershipApplication {
+  id                      String            @id @default(uuid())
+  referenceNo             String            @unique
+  applicantId             String
+  applicantType           ApplicantType     @default(INDIVIDUAL)
+  status                  ApplicationStatus @default(DRAFT)
+  branchId                String?
+  termsAccepted           Boolean           @default(false)
+  assignedToId            String?
+  submittedAt             DateTime?
+  reviewedAt              DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+  employer                String?
+  incomeRange             String?
+  membershipProduct       String?
+  occupation              String?
+  privacyAccepted         Boolean           @default(false)
+  signature               String?
+  membershipPaymentAmount Float?
+  savingPaymentAmount     Float?
+  savingTransactionRef    String?
+  savingType              String?
+  notes                   ApplicationNote[]
+  documents               Document[]
+  applicant               Applicant         @relation(fields: [applicantId], references: [id])
+  assignedTo              AdminUser?        @relation("MembershipAssigned", fields: [assignedToId], references: [id])
+  branch                  Branch?           @relation(fields: [branchId], references: [id])
+  workflow                WorkflowHistory[]
+
+  @@index([branchId, status, createdAt])
+  @@index([assignedToId, status, createdAt])
+  @@index([applicantId], map: "membership_applications_applicantId_fkey")
+  @@map("membership_applications")
+}
+
+model LoanApplication {
+  id               String            @id @default(uuid())
+  referenceNo      String            @unique
+  applicantId      String
+  membershipNo     String?
+  status           ApplicationStatus @default(DRAFT)
+  loanType         LoanType?
+  amount           Float?
+  tenure           Int?
+  purpose          String?
+  repaymentSource  String?
+  occupation       String?
+  employer         String?
+  collateralType   String?
+  collateralDesc   String?
+  branchId         String?
+  termsAccepted    Boolean           @default(false)
+  creditConsent    Boolean           @default(false)
+  signature        String?
+  assignedToId     String?
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  idType           String?
+  maritalStatus    String?
+  registeredMobile String?
+  notes            ApplicationNote[]
+  documents        Document[]
+  applicant        Applicant         @relation(fields: [applicantId], references: [id])
+  assignedTo       AdminUser?        @relation("LoanAssigned", fields: [assignedToId], references: [id])
+  branch           Branch?           @relation(fields: [branchId], references: [id])
+  workflow         WorkflowHistory[]
+
+  @@index([branchId, status, createdAt])
+  @@index([loanType, status, createdAt])
+  @@index([assignedToId, status, createdAt])
+  @@index([applicantId], map: "loan_applications_applicantId_fkey")
+  @@map("loan_applications")
+}
+
+model Document {
+  id                      String                 @id @default(uuid())
+  category                DocumentCategory
+  originalName            String
+  storedName              String
+  mimeType                String
+  size                    Int
+  status                  DocumentStatus         @default(PENDING)
+  membershipApplicationId String?
+  loanApplicationId       String?
+  uploadedAt              DateTime               @default(now())
+  verifiedAt              DateTime?
+  verifiedById            String?
+  rejectionReason         String?
+  loanApplication         LoanApplication?       @relation(fields: [loanApplicationId], references: [id])
+  membershipApplication   MembershipApplication? @relation(fields: [membershipApplicationId], references: [id])
+  verifiedBy              AdminUser?             @relation("DocumentVerifier", fields: [verifiedById], references: [id])
+
+  @@index([status, uploadedAt])
+  @@index([membershipApplicationId, status])
+  @@index([loanApplicationId, status])
+  @@index([verifiedById], map: "documents_verifiedById_fkey")
+  @@map("documents")
+}
+
+model AdminUser {
+  id                  String                  @id @default(uuid())
+  name                String
+  email               String                  @unique
+  passwordHash        String
+  role                AdminRole               @default(MEMBERSHIP_OFFICER)
+  branchId            String?
+  isActive            Boolean                 @default(true)
+  lastLogin           DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  branch              Branch?                 @relation(fields: [branchId], references: [id])
+  notes               ApplicationNote[]
+  auditLogs           AuditLog[]
+  authSessions        AuthSession[]
+  verifiedDocuments   Document[]              @relation("DocumentVerifier")
+  assignedLoans       LoanApplication[]       @relation("LoanAssigned")
+  assignedMemberships MembershipApplication[] @relation("MembershipAssigned")
+  workflowActions     WorkflowHistory[]
+
+  @@index([role, isActive, branchId])
+  @@index([lastLogin])
+  @@index([branchId], map: "admin_users_branchId_fkey")
+  @@map("admin_users")
+}
+
+model ApplicationNote {
+  id                      String                 @id @default(uuid())
+  content                 String
+  isInternal              Boolean                @default(true)
+  authorId                String
+  membershipApplicationId String?
+  loanApplicationId       String?
+  createdAt               DateTime               @default(now())
+  author                  AdminUser              @relation(fields: [authorId], references: [id])
+  loanApplication         LoanApplication?       @relation(fields: [loanApplicationId], references: [id])
+  membershipApplication   MembershipApplication? @relation(fields: [membershipApplicationId], references: [id])
+
+  @@index([authorId], map: "application_notes_authorId_fkey")
+  @@index([loanApplicationId], map: "application_notes_loanApplicationId_fkey")
+  @@index([membershipApplicationId], map: "application_notes_membershipApplicationId_fkey")
+  @@map("application_notes")
+}
+
+model WorkflowHistory {
+  id                      String                 @id @default(uuid())
+  fromStatus              ApplicationStatus
+  toStatus                ApplicationStatus
+  note                    String?
+  changedById             String
+  membershipApplicationId String?
+  loanApplicationId       String?
+  createdAt               DateTime               @default(now())
+  changedBy               AdminUser              @relation(fields: [changedById], references: [id])
+  loanApplication         LoanApplication?       @relation(fields: [loanApplicationId], references: [id])
+  membershipApplication   MembershipApplication? @relation(fields: [membershipApplicationId], references: [id])
+
+  @@index([fromStatus, toStatus, createdAt])
+  @@index([changedById, createdAt])
+  @@index([membershipApplicationId, createdAt])
+  @@index([loanApplicationId, createdAt])
+  @@map("workflow_history")
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  userId     String
+  action     String
+  targetType String
+  targetId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+  user       AdminUser @relation(fields: [userId], references: [id])
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, createdAt])
+  @@index([userId, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("audit_logs")
+}
+
+model ExportAuditRecord {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  requestedBy String
+  requestId   String?
+  format      String
+  rows        Int
+  digest      String
+  signature   String
+  filters     Json
+
+  @@index([createdAt], map: "export_audit_records_created_at_idx")
+  @@map("export_audit_records")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model CmsFaq {
+  id        String   @id @default(uuid())
+  question  String
+  answer    String
+  category  String   @default("General")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cms_faqs")
+}
+
+model CmsNews {
+  id        String   @id @default(uuid())
+  title     String
+  excerpt   String   @db.Text
+  content   String?  @db.Text
+  imageUrl  String?  @db.Text
+  category  String   @default("General")
+  status    String   @default("DRAFT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cms_news")
+}
+
+model NotificationEvent {
+  id        String   @id @default(uuid())
+  status    String   @default("INFO")
+  title     String
+  recipient String
+  type      String   @default("SYSTEM")
+  timestamp DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([type, timestamp])
+  @@index([status, createdAt])
+  @@map("notification_events")
+}
+
+model CmsDownloadCategory {
+  id        String   @id @default(uuid())
+  name      String
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cms_download_categories")
+}
+
+model CmsDownloadFile {
+  id         String   @id @default(uuid())
+  categoryId String
+  name       String
+  size       String
+  type       String
+  link       String
+  sortOrder  Int      @default(0)
+  published  Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([categoryId, published, sortOrder])
+  @@map("cms_download_files")
+}
+
+model CmsBranch {
+  id             String   @id @default(uuid())
+  name           String
+  location       String
+  officeHours    String
+  mapUrl         String
+  phonePrimary   String?
+  phoneSecondary String?
+  published      Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("cms_branches")
+}
+
+model CmsService {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  features    Json
+  ctaLabel    String?
+  ctaPath     String?
+  sortOrder   Int      @default(0)
+  status      String   @default("DRAFT")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cms_services")
+}
+
+model CmsSaving {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  features    Json
+  ctaLabel    String?
+  ctaPath     String?
+  sortOrder   Int      @default(0)
+  status      String   @default("DRAFT")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cms_savings")
+}
+
+model CmsLoanProduct {
+  id           String   @id @default(uuid())
+  name         String
+  purpose      String
+  suited       String
+  docs         String
+  status       String   @default("DRAFT")
+  maxAmount    String
+  interestRate String
+  maxTerm      String
+  color        String   @default("border-l-primary")
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("cms_loan_products")
+}
+
+model CmsAnnouncement {
+  id        String    @id @default(uuid())
+  title     String
+  content   String
+  type      String    @default("Info")
+  status    String    @default("Scheduled")
+  startDate DateTime
+  endDate   DateTime?
+  placement String    @default("Banner")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("cms_announcements")
+}
+
+model SecurityEventLog {
+  id        String   @id @default(uuid())
+  endpoint  String
+  eventType String
+  ipAddress String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([endpoint, createdAt])
+  @@index([eventType, createdAt])
+  @@map("security_event_logs")
+}
+
+model LoginAbuseState {
+  email          String    @id
+  failedAttempts Int       @default(0)
+  windowStartAt  DateTime?
+  lockoutUntil   DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("login_abuse_states")
+}
+
+model AuthSession {
+  tokenId   String    @id
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      AdminUser @relation(fields: [userId], references: [id])
+
+  @@index([userId, revokedAt, expiresAt])
+  @@map("auth_sessions")
+}
+
+model NotificationTemplate {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  channel           String   @default("EMAIL")
+  subjectTemplate   String   @map("subject_template")
+  bodyTemplate      String   @map("body_template")
+  requiredVariables String   @default("") @map("required_variables")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([updatedAt])
+  @@map("notification_templates")
+}
+
+model NotificationDeliveryTimeline {
+  id             String   @id @default(uuid())
+  notificationId String   @map("notification_id")
+  eventType      String   @map("event_type")
+  detail         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([notificationId, createdAt], map: "notification_delivery_timeline_notification_created_idx")
+  @@map("notification_delivery_timeline")
+}
+
+model NotificationAcknowledgement {
+  notificationId String    @id @map("notification_id")
+  acknowledged   Boolean   @default(false)
+  ownerId        String?   @map("owner_id")
+  ownerName      String?   @map("owner_name")
+  dueAt          DateTime? @map("due_at")
+  acknowledgedAt DateTime? @map("acknowledged_at")
+  notes          String?
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@index([updatedAt])
+  @@map("notification_acknowledgements")
+}
+
+model NotificationNoiseControl {
+  id                    Int      @id
+  throttleEnabled       Boolean  @default(true) @map("throttle_enabled")
+  dedupEnabled          Boolean  @default(true) @map("dedup_enabled")
+  throttleWindowMinutes Int      @default(10) @map("throttle_window_minutes")
+  dedupWindowMinutes    Int      @default(60) @map("dedup_window_minutes")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_noise_controls")
+}
+
+model InquiryRoutingRule {
+  id                    String   @id @default(uuid())
+  keyword               String?
+  destination           String
+  slaMinutes            Int      @default(240) @map("sla_minutes")
+  escalationDestination String?  @map("escalation_destination")
+  priority              Int      @default(100)
+  isActive              Boolean  @default(true) @map("is_active")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@index([priority, updatedAt])
+  @@map("inquiry_routing_rules")
+}
+
+model InquiryNotificationMeta {
+  notificationId        String    @id @map("notification_id")
+  routedTo              String    @map("routed_to")
+  slaDueAt              DateTime? @map("sla_due_at")
+  escalationDestination String?   @map("escalation_destination")
+  status                String    @default("OPEN")
+  lastEscalatedAt       DateTime? @map("last_escalated_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, slaDueAt])
+  @@map("inquiry_notification_meta")
+}
+
+model AdminReportSchedule {
+  id        String    @id @default(uuid())
+  nextRunAt DateTime  @map("next_run_at")
+  lastRunAt DateTime? @map("last_run_at")
+  status    String    @default("ACTIVE")
+  createdBy String?   @map("created_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, nextRunAt])
+  @@index([updatedAt])
+  @@map("admin_report_schedules")
+}
+
+model BackgroundJobQueue {
+  id          String    @id @default(uuid())
+  type        String
+  payload     Json
+  status      String    @default("PENDING")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5) @map("max_attempts")
+  runAt       DateTime  @default(now()) @map("run_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  finishedAt  DateTime? @map("finished_at")
+  lastError   String?   @map("last_error")
+  createdBy   String?   @map("created_by")
+
+  @@index([status, runAt])
+  @@map("background_job_queue")
+}
+
+model OperationalAlert {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("createdAt")
+  severity  String
+  source    String
+  message   String
+  requestId String?  @map("requestId")
+  details   Json?
+  status    String   @default("OPEN")
+
+  @@index([createdAt], map: "operational_alerts_created_at_idx")
+  @@index([status, severity])
+  @@map("operational_alerts")
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  KYC_VERIFICATION
+  PENDING_DOCUMENTS
+  PENDING_CLARIFICATION
+  APPROVED
+  REJECTED
+  ACTIVATED
+}
+
+enum LoanType {
+  REGULAR_LOAN
+  SPECIAL_SHORT_TERM_LOAN
+  SHORT_TERM_LOAN
+  INTERMEDIATE_TERM_LOAN
+  LONG_TERM_LOAN
+  NON_INTERESTS_LOAN
+  VEHICLES_AND_HOUSE_LOAN
+  PERSONAL
+  BUSINESS
+  EMERGENCY
+  DEVELOPMENT
+  ASSET
+  GROUP
+}
+
+enum DocumentCategory {
+  NATIONAL_ID_FRONT
+  NATIONAL_ID_BACK
+  PASSPORT
+  APPLICANT_PHOTO
+  PROOF_OF_ADDRESS
+  BANK_STATEMENT
+  PAYSLIP
+  BUSINESS_LICENSE
+  GUARANTOR_ID
+  COLLATERAL_DOC
+  OTHER
+  LOAN_APPLICATION_LETTER
+  LOAN_REQUEST_FORM
+  ID_FRONT_PHOTO
+  ID_BACK_PHOTO
+  MARRIAGE_CERTIFICATE
+  BUSINESS_PLAN
+  PERSONAL_PHOTO
+  COLLATERAL_DOCUMENT
+  FILLED_FORM
+  MEMBERSHIP_PAYMENT_PROOF
+  SAVING_PAYMENT_PROOF
+}
+
+enum DocumentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  FLAGGED
+  EXPIRED
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  MEMBERSHIP_OFFICER
+  LOAN_OFFICER
+  KYC_OFFICER
+  BRANCH_MANAGER
+  CONTENT_ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum ApplicantType {
+  INDIVIDUAL
+  GROUP
+  ORGANIZATION
+}
