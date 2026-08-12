@@ -60,6 +60,7 @@ const getTransporter = (): nodemailer.Transporter | null => {
       connectionTimeout: 5000,
       greetingTimeout: 5000,
       socketTimeout: 5000,
+      tls: { rejectUnauthorized: false },
       auth: {
         user,
         pass,
