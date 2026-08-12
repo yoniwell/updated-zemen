@@ -17,8 +17,5 @@ dist-ssr
 # Uploads & Temp Files
 backend/uploads/*
 !backend/uploads/.gitkeep
-*.js
-*.ts
-*.py
-*.txt
-*.ps1
+# Scripts
+scratch/*
