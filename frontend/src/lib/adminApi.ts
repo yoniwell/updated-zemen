@@ -101,6 +101,11 @@ export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T
   const method = (init?.method || 'GET').toUpperCase();
   const requiresCsrf = !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
+  const token = localStorage.getItem('zemen_admin_token');
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
   if (!headers.has('Content-Type') && init?.body && !isFormData) {
     headers.set('Content-Type', 'application/json');
   }
@@ -130,6 +135,12 @@ export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T
   if (!response.ok) {
     const message = typeof payload.error === 'string' ? payload.error : `Request failed (HTTP ${response.status})`;
     throw new AdminApiError(message, response.status);
+  }
+
+  // The backend wraps responses in a { success: true, data: ... } envelope using sendResponse.
+  // We need to unwrap it so components get the expected type.
+  if ('success' in payload && 'data' in payload) {
+    return payload.data as T;
   }
 
   return payload as T;

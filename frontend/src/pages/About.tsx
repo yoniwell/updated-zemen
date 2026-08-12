@@ -8,11 +8,22 @@ import { useNavigate } from 'react-router-dom';
 // Assets - Using the provided hero images
 import buildingImg from '@/assets/unnamed (6).jpg'; 
 import officeImg from '@/assets/photo_2026-04-08_17-03-50.jpg';
+import { fetchPublicBranches } from '@/lib/publicContentApi';
 import { usePublicUiI18n } from '@/lib/uiI18n';
 
 const About: React.FC = () => {
   const { tPublic } = usePublicUiI18n();
   const navigate = useNavigate();
+  const [branchCount, setBranchCount] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    void fetchPublicBranches().then((res) => {
+      if (mounted) setBranchCount(res.branches.length);
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <div className="bg-white overflow-hidden">
       
@@ -98,7 +109,7 @@ const About: React.FC = () => {
                 
                 {/* Subtle Info Overlay */}
                 <div className="absolute right-0 -bottom-10 bg-white p-8 shadow-xl border-t-4 border-blue-600 hidden lg:block">
-                  <div className="text-2xl font-black text-blue-950 italic">24+</div>
+                  <div className="text-2xl font-black text-blue-950 italic">{branchCount ?? '24'}+</div>
                   <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">{tPublic('aboutRegionalBranches', 'Regional Branches')}</div>
                 </div>
               </motion.div>
@@ -126,7 +137,7 @@ const About: React.FC = () => {
                 </p>
                 <div className="group flex items-center gap-4 border-r-4 border-blue-600 bg-slate-50 p-5 transition-colors hover:bg-blue-600 md:gap-5 md:p-6">
                   <Globe className="text-blue-600 group-hover:text-white" />
-                  <span className="text-xs font-black uppercase text-blue-950 group-hover:text-white italic tracking-widest">{tPublic('aboutBranchesNationwide', '24+ Branches Nationwide')}</span>
+                  <span className="text-xs font-black uppercase text-blue-950 group-hover:text-white italic tracking-widest">{tPublic('aboutBranchesNationwide', '{{count}}+ Branches Nationwide', { count: branchCount ?? 24 })}</span>
                 </div>
               </div>
               <div className="space-y-6">
@@ -215,7 +226,7 @@ const About: React.FC = () => {
           <StatBox label={tPublic('aboutStatActiveMembers', 'Active Members')} value="50K+" />
           <StatBox label={tPublic('aboutStatYearsService', 'Years of Service')} value="13+" />
           <StatBox label={tPublic('aboutStatSuccessRate', 'Success Rate')} value="99%" />
-          <StatBox label={tPublic('aboutStatActiveBranches', 'Active Branches')} value="24" />
+          <StatBox label={tPublic('aboutStatActiveBranches', 'Active Branches')} value={String(branchCount ?? 24)} />
         </div>
       </section>
 

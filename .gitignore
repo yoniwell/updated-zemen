@@ -14,15 +14,11 @@ dist
 dist-ssr
 *.local
 .env*
-.local-pg/
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Uploads & Temp Files
+backend/uploads/*
+!backend/uploads/.gitkeep
+*.js
+*.ts
+*.py
+*.txt
+*.ps1

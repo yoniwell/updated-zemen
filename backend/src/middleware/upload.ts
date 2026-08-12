@@ -6,8 +6,18 @@ import { Request } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
-const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.pdf'];
+const ALLOWED_TYPES = [
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 
+  'application/pdf', 
+  'application/msword', 
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'application/zip',
+  'application/x-zip-compressed'
+];
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.zip'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const execAsync = promisify(exec);
 
@@ -31,7 +41,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
   if (mimeValid || extensionValid) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type. Accepted: jpg, jpeg, png, pdf`));
+    cb(new Error(`Invalid file type. Accepted: jpg, jpeg, png, pdf, doc, docx, xls, xlsx, csv, zip`));
   }
 };
 
@@ -39,6 +49,23 @@ export const upload = multer({
   storage,
   fileFilter,
   limits: { fileSize: MAX_SIZE },
+});
+
+export const uploadUnrestricted = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+});
+
+export const uploadAnyImage = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed.'));
+    }
+  },
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
 });
 
 const startsWith = (source: Buffer, signature: number[]): boolean =>

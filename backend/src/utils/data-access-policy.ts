@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { readFeatureFlags } from '../services/feature-flag.service';
+import { readFeatureFlags } from '../modules/system/services/feature-flag.service';
 
 export const hasSensitiveDataAccess = (req: AuthRequest): boolean => {
   const role = req.user?.role;

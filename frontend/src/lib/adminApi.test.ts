@@ -17,11 +17,11 @@ describe('adminFetch', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    const response = await adminFetch<{ applications: unknown[] }>('/api/admin/queues/loan?page=1&limit=10');
+    const response = await adminFetch<{ applications: unknown[] }>('/api/loans?page=1&limit=10');
 
     expect(response.applications).toEqual([]);
     expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:5000/api/admin/queues/loan?page=1&limit=10',
+      'http://localhost:5000/api/loans?page=1&limit=10',
       expect.objectContaining({ credentials: 'include' })
     );
   });
@@ -37,7 +37,7 @@ describe('adminFetch', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    await adminFetch('/api/admin/applications/membership/app-1/status', {
+    await adminFetch('/api/membership/app-1/status', {
       method: 'PATCH',
       body: JSON.stringify({ status: 'UNDER_REVIEW', expectedUpdatedAt: '2026-03-27T10:00:00.000Z' }),
     });
@@ -65,7 +65,7 @@ describe('adminFetch', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    await adminFetch('/api/admin/applications/membership/app-1/status', {
+    await adminFetch('/api/membership/app-1/status', {
       method: 'PATCH',
       body: JSON.stringify({ status: 'UNDER_REVIEW', expectedUpdatedAt: '2026-03-27T10:00:00.000Z' }),
     });
@@ -105,7 +105,7 @@ describe('adminFetch', () => {
 
     vi.stubGlobal('fetch', fetchMock);
 
-    await adminFetch('/api/admin/applications/membership/app-1/status', {
+    await adminFetch('/api/membership/app-1/status', {
       method: 'PATCH',
       body: JSON.stringify({ status: 'UNDER_REVIEW', expectedUpdatedAt: '2026-03-27T10:00:00.000Z' }),
     });
@@ -131,7 +131,7 @@ describe('adminFetch', () => {
     };
 
     await expect(
-      adminFetch('/api/admin/applications/membership/missing-id')
+      adminFetch('/api/membership/missing-id')
     ).rejects.toMatchObject(expectedError);
   });
 });

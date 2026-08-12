@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import StepProgress from '@/components/portal/StepProgress';
 import { getApiBaseUrl } from '@/lib/apiBaseUrl';
-import { fetchPublicBranches } from '@/lib/publicContentApi';
+import { fetchPublicBranches, fetchConfigSavingTypes, type ConfigSavingType } from '@/lib/publicContentApi';
 import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 import { usePublicUiI18n } from '@/lib/uiI18n';
 import { MembershipFormInput, membershipSchema } from '@/schemas/membershipSchema';
@@ -67,7 +67,7 @@ const uploadMembershipDocument = async (applicationId: string, file: File, categ
   formData.append('file', file);
   formData.append('category', category);
 
-  const response = await fetchWithTimeout(`${baseUrl}/api/applications/${applicationId}/upload`, {
+  const response = await fetchWithTimeout(`${baseUrl}/api/membership/${applicationId}/documents`, {
     method: 'POST',
     body: formData,
     timeoutMs: 120000,
@@ -98,6 +98,7 @@ export default function MembershipPortal() {
   const [otpBusy, setOtpBusy] = useState(false);
   const [resendInSeconds, setResendInSeconds] = useState(0);
   const [otpExpiresInSeconds, setOtpExpiresInSeconds] = useState(0);
+  const [savingTypes, setSavingTypes] = useState<ConfigSavingType[]>([]);
   const [otpLockedOut, setOtpLockedOut] = useState(false);
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [branchOptions, setBranchOptions] = useState<MembershipBranchOption[]>([]);
@@ -109,6 +110,7 @@ export default function MembershipPortal() {
     watch,
     setValue,
     getValues,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<MembershipFormInput>({
     resolver: zodResolver(membershipSchema),
@@ -117,6 +119,52 @@ export default function MembershipPortal() {
   });
 
   const values = watch();
+
+  // Load saved session state
+  useEffect(() => {
+    const saved = localStorage.getItem('membership_portal_state');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.formValues) {
+           reset({ ...initialValues, ...parsed.formValues, otpCode: '' });
+        }
+        if (parsed.step) setStep(parsed.step);
+        if (parsed.otpVerified) setOtpVerified(parsed.otpVerified);
+        if (parsed.otpVerificationToken) setOtpVerificationToken(parsed.otpVerificationToken);
+      } catch (e) {
+        console.error('Failed to restore membership session state', e);
+      }
+    }
+  }, [reset]);
+
+  // Fetch dynamic data
+  useEffect(() => {
+    if (step === 5) {
+      fetchPublicBranches().then((data) => {
+        setBranchOptions(data.branches);
+      }).catch((err) => {
+        console.error('Failed to fetch branches:', err);
+      });
+
+      fetchConfigSavingTypes().then((data) => {
+        setSavingTypes(data);
+      }).catch((err) => {
+        console.error('Failed to fetch saving types:', err);
+      });
+    }
+  }, [step]);
+
+  // Save session state on change
+  useEffect(() => {
+    const toSave = {
+      formValues: { ...values, otpCode: '' }, // Never persist the OTP code itself
+      step,
+      otpVerified,
+      otpVerificationToken
+    };
+    localStorage.setItem('membership_portal_state', JSON.stringify(toSave));
+  }, [values, step, otpVerified, otpVerificationToken]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -219,16 +267,43 @@ export default function MembershipPortal() {
     [values]
   );
 
+  const selectedSavingTypeObj = useMemo(() => {
+    return savingTypes.find((st) => st.name === values.savingType || st.id === values.savingType);
+  }, [savingTypes, values.savingType]);
+
+  const savingAmountValidationError = useMemo(() => {
+    if (!selectedSavingTypeObj) return undefined;
+    const amtStr = values.savingPaymentAmount;
+    if (amtStr === undefined || amtStr === null || String(amtStr).trim() === '') return undefined;
+    const amt = Number(amtStr);
+    if (isNaN(amt)) return 'Please enter a valid numeric amount';
+    if (selectedSavingTypeObj.minAmount != null && amt < selectedSavingTypeObj.minAmount) {
+      return `Saving payment amount must be at least ${selectedSavingTypeObj.minAmount.toLocaleString()} ETB for ${selectedSavingTypeObj.name}`;
+    }
+    if (selectedSavingTypeObj.maxAmount != null && amt > selectedSavingTypeObj.maxAmount) {
+      return `Saving payment amount cannot exceed ${selectedSavingTypeObj.maxAmount.toLocaleString()} ETB for ${selectedSavingTypeObj.name}`;
+    }
+    return undefined;
+  }, [selectedSavingTypeObj, values.savingPaymentAmount]);
+
   const errorText = (field: keyof MembershipFormInput): string | undefined => {
+    if (field === 'savingPaymentAmount' && savingAmountValidationError) {
+      return savingAmountValidationError;
+    }
     const msg = errors[field]?.message;
     return typeof msg === 'string' ? msg : undefined;
   };
 
   const onNext = async () => {
     submitIntentRef.current = false;
-
     if (step === 1 && !otpVerified) {
-      toast.error('Verify your email with OTP before continuing');
+      toast.error('Please verify your email address with the OTP code before proceeding');
+      return;
+    }
+
+    if (step === 5 && savingAmountValidationError) {
+      setError('savingPaymentAmount', { type: 'manual', message: savingAmountValidationError });
+      toast.error(savingAmountValidationError);
       return;
     }
 
@@ -243,6 +318,10 @@ export default function MembershipPortal() {
   };
 
   const onSubmit = async (data: MembershipFormInput) => {
+    const selectedBranchObj = branchOptions.find((b) => b.id === data.preferredBranch || b.name === data.preferredBranch);
+    const resolvedBranchId = selectedBranchObj?.id || (typeof data.preferredBranch === 'string' && data.preferredBranch.trim() !== '' ? data.preferredBranch : undefined);
+    const resolvedBranchName = selectedBranchObj?.name || (typeof data.preferredBranch === 'string' && data.preferredBranch.trim() !== '' ? data.preferredBranch : undefined);
+
     const payload = {
       firstName: data.firstName,
       fathersName: data.fathersName,
@@ -251,14 +330,14 @@ export default function MembershipPortal() {
       email: data.email || undefined,
       idType: data.idType,
       idNumber: data.idNumber,
-      branchId: undefined,
-      preferredBranch: data.preferredBranch,
+      branchId: resolvedBranchId,
+      preferredBranch: resolvedBranchName,
       membershipPaymentAmount: data.membershipPaymentAmount,
       savingType: data.savingType || undefined,
       savingPaymentAmount: data.savingPaymentAmount,
       savingTransactionRef: data.savingTransactionRef || undefined,
       termsAccepted: data.termsAccepted,
-      otpVerificationToken,
+      otpVerificationToken: otpVerificationToken || sessionStorage.getItem('membership_otp_token') || '',
     };
 
     const response = await fetchWithTimeout(`${baseUrl}/api/membership`, {
@@ -272,7 +351,8 @@ export default function MembershipPortal() {
     let result: MembershipSubmitResponse | { error?: string } = { error: 'Failed to submit membership application' };
     if (responseText) {
       try {
-        result = JSON.parse(responseText) as MembershipSubmitResponse | { error?: string };
+        const parsed = JSON.parse(responseText);
+        result = ('success' in parsed && 'data' in parsed) ? parsed.data : parsed;
       } catch {
         result = { error: 'Unexpected response from server' };
       }
@@ -322,10 +402,12 @@ export default function MembershipPortal() {
 
     if (uploads.length > 0) {
       toast.success(`Application submitted and uploaded: ${uploads.map((upload) => upload.label).join(', ')}`);
+      sessionStorage.removeItem('membership_portal_state');
       return;
     }
 
     toast.success('Membership application submitted successfully');
+    sessionStorage.removeItem('membership_portal_state');
   };
 
   const onInvalidSubmit = (formErrors: FieldErrors<MembershipFormInput>) => {
@@ -359,10 +441,12 @@ export default function MembershipPortal() {
         timeoutMs: 30000,
       });
 
-      const payload = (await response.json()) as { error?: string; resendInSeconds?: number };
+      const payload = (await response.json()) as { error?: string; resendInSeconds?: number, code?: string };
       if (!response.ok) {
         throw new Error(publicErrorMessages.sendOtp);
       }
+      
+      setValue('otpCode', '');
 
       setOtpSent(true);
       setOtpVerified(false);
@@ -408,11 +492,18 @@ export default function MembershipPortal() {
 
       setOtpVerified(true);
       setOtpVerificationToken(payload.verificationToken);
+
+      // Save token to browser session memory as a backup safeguard
+      sessionStorage.setItem('membership_otp_token', payload.verificationToken);
+
       setOtpHint('Verification successful. You can continue to the next step.');
       toast.success('Email verified successfully');
     } catch (error) {
       setOtpVerified(false);
       setOtpVerificationToken(null);
+
+      // Clear backup if verification fails
+      sessionStorage.removeItem('membership_otp_token');
       console.error('Verify membership OTP error:', error);
       const message = publicErrorMessages.verifyOtp;
       if (String(error).toLowerCase().includes('too many incorrect attempts')) {
@@ -504,7 +595,7 @@ export default function MembershipPortal() {
                 <Input type="email" placeholder="you@example.com" {...register('email')} />
               </Field>
               <Field label="OTP Code" error={errorText('otpCode')}>
-                <Input placeholder="Enter OTP" {...register('otpCode')} />
+                <Input placeholder="000000" maxLength={8} {...register('otpCode')} />
               </Field>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                 <Button type="button" onClick={() => void sendOtpCode(false)} disabled={otpBusy || resendInSeconds > 0}>
@@ -513,7 +604,7 @@ export default function MembershipPortal() {
                 <Button type="button" variant="outline" onClick={() => void sendOtpCode(true)} disabled={otpBusy || resendInSeconds > 0}>
                   Resend Code {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
+                <Button type="button" variant="outline" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
                   Verify OTP
                 </Button>
                 <span className={`text-sm font-semibold ${otpVerified ? 'text-emerald-700' : 'text-slate-500'}`}>
@@ -616,17 +707,34 @@ export default function MembershipPortal() {
               <Field label="Saving Type" error={errorText('savingType')}>
                 <select className="h-11 w-full rounded-md border px-3" {...register('savingType')}>
                   <option value="">Select saving type</option>
-                  <option value="REGULAR_SAVING">Regular Saving</option>
-                  <option value="CHILDRENS_SAVING">Children's Saving</option>
-                  <option value="TIME_DEPOSIT_SAVING">Time Deposit Saving</option>
-                  <option value="NON_INTEREST_SAVING">Non-Interest Saving</option>
-                  <option value="DIASPORA_SAVING">Diaspora Saving</option>
-                  <option value="VEHICLE_HOUSE_SAVING">Vehicle & House Saving</option>
-                  <option value="CHOICE_SAVING">Choice Saving</option>
+                  {savingTypes.map(st => (
+                    <option key={st.id} value={st.name}>{st.name}</option>
+                  ))}
                 </select>
               </Field>
               <Field label="Saving Payment Amount" error={errorText('savingPaymentAmount')}>
-                <Input type="number" step="0.01" {...register('savingPaymentAmount')} />
+                <Input
+                  type="number"
+                  step="0.01"
+                  className={errorText('savingPaymentAmount') ? 'border-red-500 text-red-900 focus:ring-red-500 font-semibold' : ''}
+                  {...register('savingPaymentAmount')}
+                />
+                {errorText('savingPaymentAmount') ? (
+                  <p className="mt-1.5 text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 flex items-center gap-1.5">
+                    <span className="font-extrabold text-sm">⚠</span> {errorText('savingPaymentAmount')}
+                  </p>
+                ) : (
+                  (() => {
+                    const selectedType = savingTypes.find((st) => st.name === watch('savingType') || st.id === watch('savingType'));
+                    if (!selectedType || (selectedType.minAmount == null && selectedType.maxAmount == null)) return null;
+                    return (
+                      <p className="mt-1 text-xs font-medium text-slate-600 bg-slate-50 p-2 rounded border border-slate-200">
+                        {selectedType.minAmount != null && `Minimum required contribution: ${selectedType.minAmount.toLocaleString()} ETB. `}
+                        {selectedType.maxAmount != null && `Maximum limit: ${selectedType.maxAmount.toLocaleString()} ETB.`}
+                      </p>
+                    );
+                  })()
+                )}
               </Field>
               <Field label="Transaction / Reference Number" error={errorText('savingTransactionRef')}>
                 <Input {...register('savingTransactionRef')} />

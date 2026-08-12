@@ -15,64 +15,9 @@ import PublicServiceNotice from '@/components/PublicServiceNotice';
 import BannerAnnouncements from '@/components/public/BannerAnnouncements';
 import { usePublicUiI18n } from '@/lib/uiI18n';
 
-const downloadCategories = [
-  {
-    titleKey: 'downloadsCategoryApplicationForms',
-    titleFallback: 'Application Forms',
-    icon: <FileText className="h-6 w-6 text-blue-600" />,
-    files: [
-      { nameKey: 'downloadsFileMembershipApplicationForm', nameFallback: 'Membership Application Form', size: '245 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFilePersonalLoanApplication', nameFallback: 'Personal Loan Application', size: '312 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileBusinessLoanApplication', nameFallback: 'Business Loan Application', size: '450 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileGuarantorCommitmentForm', nameFallback: 'Guarantor Commitment Form', size: '180 KB', type: 'PDF', link: '#' },
-    ]
-  },
-  {
-    titleKey: 'downloadsCategoryPoliciesGuidelines',
-    titleFallback: 'Policies & Guidelines',
-    icon: <BookOpen className="h-6 w-6 text-blue-600" />,
-    files: [
-      { nameKey: 'downloadsFileBylaws2025', nameFallback: 'Zemen SACCO By-Laws (2025)', size: '1.2 MB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileLoanPolicyFramework', nameFallback: 'Loan Policy Framework', size: '850 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileSavingsDepositPolicy', nameFallback: 'Savings and Deposit Policy', size: '620 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileDividendDistributionGuide', nameFallback: 'Dividend Distribution Guide', size: '420 KB', type: 'PDF', link: '#' },
-    ]
-  },
-  {
-    titleKey: 'downloadsCategoryReportsFinancials',
-    titleFallback: 'Reports & Financials',
-    icon: <FileCheck className="h-6 w-6 text-blue-600" />,
-    files: [
-      { nameKey: 'downloadsFileAnnualReport202425', nameFallback: 'Annual Report 2024/25', size: '4.5 MB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileAuditedFinancialQ4', nameFallback: 'Audited Financial Statements (Q4)', size: '2.1 MB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileStrategicPlan20252030', nameFallback: 'Strategic Plan 2025-2030', size: '3.8 MB', type: 'PDF', link: '#' },
-    ]
-  },
-  {
-    titleKey: 'downloadsCategoryComplianceSecurity',
-    titleFallback: 'Compliance & Security',
-    icon: <ShieldAlert className="h-6 w-6 text-blue-600" />,
-    files: [
-      { nameKey: 'downloadsFileDataPrivacyPolicy', nameFallback: 'Data Privacy Policy', size: '350 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileAmlGuide', nameFallback: 'Anti-Money Laundering (AML) Guide', size: '520 KB', type: 'PDF', link: '#' },
-      { nameKey: 'downloadsFileMemberRightsResponsibilities', nameFallback: 'Member Rights & Responsibilities', size: '280 KB', type: 'PDF', link: '#' },
-    ]
-  }
-];
-
 export default function Downloads() {
   const { tPublic } = usePublicUiI18n();
-  const [categories, setCategories] = useState<Array<{ title: string; files: Array<{ name: string; size: string; type: string; link: string }> }>>(
-    downloadCategories.map((category) => ({
-      title: tPublic(category.titleKey, category.titleFallback),
-      files: category.files.map((file) => ({
-        name: tPublic(file.nameKey, file.nameFallback),
-        size: file.size,
-        type: file.type,
-        link: file.link,
-      })),
-    }))
-  );
+  const [categories, setCategories] = useState<Array<{ title: string; files: Array<{ name: string; size: string; type: string; link: string }> }>>([]);
   const [isCmsUnavailable, setIsCmsUnavailable] = useState(false);
 
   useEffect(() => {
@@ -111,7 +56,6 @@ export default function Downloads() {
         setCategories(Array.from(categoryMap.values()));
       } catch {
         if (mounted) setIsCmsUnavailable(true);
-        // Keep static fallback data when CMS endpoint is unavailable.
       }
     };
 
@@ -135,7 +79,7 @@ export default function Downloads() {
 
         {isCmsUnavailable ? (
           <div className="mx-auto mb-8 max-w-3xl">
-            <PublicServiceNotice message={tPublic('downloadsCmsUnavailableNotice', 'Download services are temporarily unavailable. Showing fallback documents for now.')} />
+            <PublicServiceNotice message={tPublic('downloadsCmsUnavailableNotice', 'Download services are temporarily unavailable. Please try again later.')} />
           </div>
         ) : null}
 
@@ -151,7 +95,7 @@ export default function Downloads() {
                 <CardHeader className="bg-white border-b border-gray-100 rounded-t-xl">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-blue-50 rounded-lg">
-                      {downloadCategories[index]?.icon || <FileText className="h-6 w-6 text-blue-600" />}
+                      <FileText className="h-6 w-6 text-blue-600" />
                     </div>
                     <CardTitle className="text-xl">{category.title}</CardTitle>
                   </div>
@@ -172,7 +116,7 @@ export default function Downloads() {
                           </div>
                         </div>
                         <Button asChild variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800 hover:bg-blue-50">
-                          <a href={file.link} download target="_blank" rel="noreferrer">
+                          <a href={file.link} download={file.name} target="_blank" rel="noreferrer">
                           <Download className="h-4 w-4 mr-2" />
                           {tPublic('download', 'Download')}
                           </a>

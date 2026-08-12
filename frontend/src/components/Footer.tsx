@@ -93,16 +93,9 @@ export default function Footer({ onNavigate }: FooterProps) {
                 <Globe size={12} /> {tUi('regional Foot print')}
               </h4>
               <ul className="text-slate-500 font-bold italic text-xs space-y-1 uppercase tracking-tighter max-h-32 overflow-y-auto pr-1">
-                {cmsBranches.length > 0 ? (
-                  cmsBranches.map((b) => (
-                    <li key={b.id}>• {b.name}</li>
-                  ))
-                ) : (
-                  // Fallback static list
-                  ['Mekelle Head Office', 'Mekelle', 'Addis Abeba', 'Adigrat', 'AbiAdi', 'Maychow', 'Adwa', 'Shire', 'Rama'].map((branch) => (
-                    <li key={branch}>• {branch}</li>
-                  ))
-                )}
+                {cmsBranches.map((b) => (
+                  <li key={b.id}>• {b.name}</li>
+                ))}
               </ul>
             </div>
           <div className="flex gap-3 pt-2">
@@ -160,22 +153,9 @@ export default function Footer({ onNavigate }: FooterProps) {
               <div className="flex gap-4 items-start border-t border-blue-50 pt-4">
                 <Phone className="text-blue-600 mt-1" size={18} />
                 <div className="grid grid-cols-1 gap-1">
-                  {supportLines.length > 0 ? (
-                    supportLines.map((line) => (
-                      <p key={`${line.number}-${line.name}`} className="text-[12px] font-bold text-slate-500 tracking-tight">{line.name}: {line.number}</p>
-                    ))
-                  ) : (
-                    <>
-                      <p className="text-[12px] font-black uppercase italic tracking-tighter text-slate-900">Mekelle Head Office: 0953 44 44 11</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">Adigrat: 0997 34 62 00</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">Adwa: 0997 33 92 00</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">Shire: 0997 34 32 00</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">Mekelle: 0997 34 42 00</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">AbiAdi: 0903 21 23 00</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">Rama: 0903 35 13 00</p>
-                      <p className="text-[12px] font-bold text-slate-500 tracking-tight">Maychew: 0903 04 73 00</p>
-                    </>
-                  )}
+                  {supportLines.map((line) => (
+                    <p key={`${line.number}-${line.name}`} className="text-[12px] font-bold text-slate-500 tracking-tight">{line.name}: {line.number}</p>
+                  ))}
                 </div>
               </div>
             </div>

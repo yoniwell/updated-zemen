@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-
 import { toast } from 'sonner';
 import { adminFetch } from '@/lib/adminApi';
 import { ROLE_LABELS, type AdminRole } from '@/lib/adminRbac';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import UserManagement from '@/pages/admin/UserManagement';
 import { useAdminI18n } from '@/lib/uiI18n';
-import { ShieldCheck, UserCog } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
+
 interface RoleAccess {
   role: AdminRole;
   label: string;
@@ -38,8 +36,8 @@ export default function SettingsHome() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const accessResponse = await adminFetch<{ roles: RoleAccess[] }>('/api/admin/settings/access-control');
-      setRoleAccess(accessResponse.roles);
+      const accessResponse = await adminFetch<{ accessControl: Record<string, RoleAccess> }>('/api/settings/access-control');
+      setRoleAccess(Object.values(accessResponse.accessControl || {}));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tAdmin('failedLoadSettings', 'Failed to load settings'));
     } finally {
@@ -71,7 +69,7 @@ export default function SettingsHome() {
     }
     setSavingRole(role);
     try {
-      await adminFetch<{ role: AdminRole; modules: string[] }>(`/api/admin/settings/access-control/${role}`, {
+      await adminFetch<{ role: AdminRole; modules: string[] }>(`/api/settings/access-control/${role}`, {
         method: 'PATCH',
         body: JSON.stringify({ modules }),
       });
@@ -85,32 +83,32 @@ export default function SettingsHome() {
   };
 
   return (
-    <div>
-      <div className="mb-6 flex items-start justify-between gap-3">
-        <h1 className="font-serif text-2xl text-foreground">{tAdmin('settingsHeading', 'Settings')}</h1>
+    <div className="flex h-full flex-col bg-slate-50 p-4 md:p-6 lg:p-8">
+      <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6 text-blue-600" />
+            Access Matrix
+          </h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">
+            Configure which modules each administrative role can access.
+          </p>
+        </div>
       </div>
 
-      <Tabs defaultValue="access" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="access">
-            <ShieldCheck className="mr-2 h-4 w-4" />
-            Access Matrix
-          </TabsTrigger>
-          <TabsTrigger value="user-management">
-            <UserCog className="mr-2 h-4 w-4" />
-            User Management
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="access">
-          {loading ? (
-            <p>Loading…</p>
-          ) : (
-            <div className="grid gap-6">
-              {roleAccess.map((entry) => (
-                <div key={entry.role} className="mb-4 rounded border p-4">
-                  <h3 className="text-lg font-medium">{ROLE_LABELS[entry.role]}</h3>
-                  <div className="mt-2 flex flex-wrap gap-2">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+        {loading ? (
+          <div className="p-8 text-center text-slate-500 font-medium">Loading access matrix...</div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {(roleAccess || []).map((entry) => (
+              <div key={entry.role} className="flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden transition-all hover:shadow-md">
+                <div className="border-b border-slate-100 bg-slate-50/50 px-5 py-4">
+                  <h3 className="text-lg font-bold text-slate-900">{ROLE_LABELS[entry.role]}</h3>
+                  <p className="text-xs font-medium text-slate-500 mt-0.5">Role Identifier: {entry.role}</p>
+                </div>
+                <div className="flex-1 p-5">
+                  <div className="flex flex-wrap gap-2">
                     {moduleOptions.map((module) => {
                       const enabled = entry.modules.includes(module);
                       return (
@@ -119,8 +117,10 @@ export default function SettingsHome() {
                           type="button"
                           onClick={() => toggleRoleModule(entry.role, module)}
                           className={[
-                            'rounded border h-10 px-4 py-2 text-sm font-semibold uppercase tracking-wide',
-                            enabled ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500',
+                            'rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors',
+                            enabled 
+                              ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100' 
+                              : 'border-slate-200 bg-slate-50 text-slate-400 hover:bg-slate-100',
                           ].join(' ')}
                         >
                           {module}
@@ -128,20 +128,22 @@ export default function SettingsHome() {
                       );
                     })}
                   </div>
-                  <div className="mt-3">
-                    <Button size="sm" onClick={() => void saveRoleModules(entry.role, entry.modules)} disabled={savingRole === entry.role}>
-                      {savingRole === entry.role ? tAdmin('saving', 'Saving…') : tAdmin('saveRolePermissions', 'Save Role Permissions')}
-                    </Button>
-                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-        <TabsContent value="user-management">
-          <UserManagement />
-        </TabsContent>
-      </Tabs>
+                <div className="border-t border-slate-100 p-4">
+                  <Button 
+                    size="sm" 
+                    className="w-full font-bold"
+                    onClick={() => void saveRoleModules(entry.role, entry.modules)} 
+                    disabled={savingRole === entry.role}
+                  >
+                    {savingRole === entry.role ? tAdmin('saving', 'Saving…') : tAdmin('saveRolePermissions', 'Save Permissions')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

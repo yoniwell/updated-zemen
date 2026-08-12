@@ -3,48 +3,40 @@ import { z } from 'zod';
 const phoneRegex = /^(\+?[1-9]\d{7,14}|0\d{9})$/;
 
 export const membershipSchema = z.object({
-  phone: z.string().regex(phoneRegex, 'Enter a valid phone number in international format'),
-  email: z.string().trim().email('Enter a valid email address'),
-  otpCode: z.string().trim().min(4, 'OTP is required').max(8, 'OTP is too long'),
+  email: z.string().trim().min(1, 'Email address is required').email('Please enter a valid email address'),
+  otpCode: z.string().trim().min(1, 'OTP verification code is required').length(6, 'OTP code must be 6 digits'),
 
-  firstName: z.string().trim().min(2, 'First name is too short').max(60, 'First name is too long'),
-  fathersName: z.string().trim().min(2, "Father's name is required").max(60, 'Father\'s name is too long'),
-  grandfathersName: z.string().trim().min(2, "Grandfather's name is required").max(60, 'Grandfather\'s name is too long'),
+  phone: z.string().trim().min(1, 'Mobile phone number is required').regex(phoneRegex, 'Please enter a valid phone number'),
+  firstName: z.string().trim().min(1, 'First name is required').min(2, 'First name must be at least 2 characters'),
+  fathersName: z.string().trim().min(1, "Father's name is required").min(2, "Father's name must be at least 2 characters"),
+  grandfathersName: z.string().trim().min(1, "Grandfather's name is required").min(2, "Grandfather's name must be at least 2 characters"),
 
-  idType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'STUDENT_ID', 'KEBELE_ID']),
-  idNumber: z.string().trim().min(3, 'ID number is required').max(80, 'ID number is too long'),
-  idFrontName: z.string().min(1, 'Front ID file is required'),
-  idBackName: z.string().optional().or(z.literal('')),
+  idType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'STUDENT_ID', 'KEBELE_ID'], {
+    errorMap: () => ({ message: 'Please select a valid ID type' }),
+  }),
+  idNumber: z.string().trim().min(1, 'ID number is required').min(3, 'ID number must be at least 3 characters'),
+  idFrontName: z.string().min(1, 'Please upload the front of your ID document'),
+  idBackName: z.string().optional(),
 
-  applicantPhotoName: z.string().min(1, 'Applicant photo is required'),
-  filledFormName: z.string().optional().or(z.literal('')),
+  applicantPhotoName: z.string().min(1, 'Please upload a passport-sized applicant photo'),
+  filledFormName: z.string().min(1, 'Please upload your signed membership application form'),
 
   membershipPaymentAmount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
-  }, z.number().min(0, 'Membership payment must be a positive number')),
-  membershipPaymentProofName: z.string().optional().or(z.literal('')),
+  }, z.number({ invalid_type_error: 'Membership payment amount is required' }).min(10, 'Minimum membership payment is 10 ETB')),
+  membershipPaymentProofName: z.string().min(1, 'Please upload proof of membership payment receipt'),
 
-  savingType: z.enum([
-    'REGULAR_SAVING',
-    'CHILDRENS_SAVING',
-    'TIME_DEPOSIT_SAVING',
-    'NON_INTEREST_SAVING',
-    'DIASPORA_SAVING',
-    'VEHICLE_HOUSE_SAVING',
-    'CHOICE_SAVING',
-  ]).optional(),
+  savingType: z.string().min(1, 'Please select a saving type'),
   savingPaymentAmount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
-  }, z.number().min(0, 'Saving payment must be a positive number').optional()),
-  savingTransactionRef: z.string().trim().optional().or(z.literal('')),
-  savingProofName: z.string().optional().or(z.literal('')),
+  }, z.number({ invalid_type_error: 'Initial saving amount is required' }).positive('Saving amount must be greater than 0')),
+  savingTransactionRef: z.string().trim().min(1, 'Saving transaction reference is required').min(3, 'Transaction reference must be at least 3 characters'),
+  savingProofName: z.string().min(1, 'Please upload proof of initial saving payment receipt'),
 
-  preferredBranch: z.string().trim().optional().or(z.literal('')),
-  termsAccepted: z.boolean().refine((value) => value === true, {
-    message: 'You must accept terms and conditions',
-  }),
+  preferredBranch: z.string().trim().min(1, 'Please select your preferred branch'),
+  termsAccepted: z.boolean().refine((val) => val === true, 'You must accept the terms and conditions'),
 });
 
 export type MembershipFormInput = z.input<typeof membershipSchema>;

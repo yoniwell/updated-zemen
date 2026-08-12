@@ -24,10 +24,6 @@ export default function CommunicationHub() {
 
   return (
     <section className="space-y-4">
-      <div>
-        <h1 className="font-serif text-2xl text-foreground">{t('adminCommunicationHubTitle', 'Communication Hub')}</h1>
-        <p className="text-sm text-muted-foreground">{t('adminCommunicationHubSubtitle', 'Email/SMS templates and trigger rule configuration.')}</p>
-      </div>
 
       <article className="rounded-lg bg-white p-4">
         <p className="mb-2 text-xs font-black uppercase tracking-widest text-slate-500">{t('adminEmailTemplatesLabel', 'Email Templates')}</p>

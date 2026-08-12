@@ -56,7 +56,7 @@ async function main() {
       name: 'Elena Aris',
       email: 'officer@zemen.com',
       passwordHash: officerPassword,
-      role: 'LOAN_OFFICER',
+      role: 'OFFICER',
       isActive: true,
       branchId: branches[1].id
     }

@@ -40,8 +40,8 @@ type DetailPayload = {
   reviewedAt?: string | null;
   applicant: {
     firstName: string;
-    middleName?: string | null;
-    lastName?: string | null;
+    fathersName?: string | null;
+    grandfathersName?: string | null;
     phone: string;
     email?: string | null;
     idNumber?: string | null;
@@ -50,34 +50,23 @@ type DetailPayload = {
     id: string;
     name: string;
   } | null;
-  occupation?: string | null;
-  employer?: string | null;
-  applicantType?: string | null;
-  incomeRange?: string | null;
-  membershipProduct?: string | null;
+
   membershipPaymentAmount?: number | null;
   savingType?: string | null;
   savingPaymentAmount?: number | null;
   savingTransactionRef?: string | null;
-  emergencyContactName?: string | null;
-  emergencyContactPhone?: string | null;
+
   termsAccepted?: boolean | null;
   privacyAccepted?: boolean | null;
   signature?: string | null;
   membershipNo?: string | null;
-  registeredMobile?: string | null;
+
   idType?: string | null;
   maritalStatus?: string | null;
   amount?: number | null;
   loanType?: string | null;
   tenure?: number | null;
-  purpose?: string | null;
-  repaymentSource?: string | null;
-  monthlyIncome?: number | null;
-  monthlyExpenses?: number | null;
-  existingLoans?: number | null;
-  guarantorName?: string | null;
-  guarantorPhone?: string | null;
+
   guarantorIdNumber?: string | null;
   collateralType?: string | null;
   collateralDesc?: string | null;
@@ -134,14 +123,10 @@ const labelizeStatus = (status: string) =>
     .join(' ');
 
 const statusColors: Record<string, string> = {
-  UNDER_REVIEW: 'bg-info/10 text-info',
-  KYC_VERIFICATION: 'bg-warning/10 text-warning',
-  APPROVED: 'bg-success/10 text-success',
-  PENDING_CLARIFICATION: 'bg-warning/10 text-warning',
   SUBMITTED: 'bg-primary/10 text-primary',
+  UNDER_REVIEW: 'bg-info/10 text-info',
+  APPROVED: 'bg-success/10 text-success',
   REJECTED: 'bg-accent/10 text-accent',
-  DRAFT: 'bg-muted text-muted-foreground',
-  PENDING_DOCUMENTS: 'bg-warning/10 text-warning',
 };
 
 const documentStatusColors: Record<string, string> = {
@@ -153,15 +138,10 @@ const documentStatusColors: Record<string, string> = {
 };
 
 const statusTransitionMap: Record<string, string[]> = {
-  DRAFT: ['SUBMITTED'],
-  SUBMITTED: ['UNDER_REVIEW', 'PENDING_DOCUMENTS', 'REJECTED'],
-  UNDER_REVIEW: ['KYC_VERIFICATION', 'PENDING_DOCUMENTS', 'PENDING_CLARIFICATION', 'APPROVED', 'REJECTED'],
-  KYC_VERIFICATION: ['UNDER_REVIEW', 'PENDING_DOCUMENTS', 'PENDING_CLARIFICATION', 'APPROVED', 'REJECTED'],
-  PENDING_DOCUMENTS: ['UNDER_REVIEW', 'KYC_VERIFICATION', 'PENDING_CLARIFICATION', 'REJECTED'],
-  PENDING_CLARIFICATION: ['UNDER_REVIEW', 'KYC_VERIFICATION', 'PENDING_DOCUMENTS', 'REJECTED'],
-  APPROVED: ['ACTIVATED'],
+  SUBMITTED: ['UNDER_REVIEW', 'REJECTED'],
+  UNDER_REVIEW: ['APPROVED', 'REJECTED'],
+  APPROVED: [],
   REJECTED: [],
-  ACTIVATED: [],
 };
 
 const findStatusPath = (fromStatus: string, toStatus: string): string[] | null => {
@@ -212,10 +192,10 @@ export default function ApplicationDetail() {
   };
 
   const fetchDetailById = async (resolvedId: string) =>
-    adminFetch<{ applicationType: string; application: DetailPayload }>(`/api/admin/applications/${applicationType}/${resolvedId}`);
+    adminFetch<{ applicationType: string; application: DetailPayload }>(`/api/${applicationType === 'loan' ? 'loans' : 'membership'}/${resolvedId}`);
 
   const resolveIdByReference = async (referenceNo: string): Promise<string | null> => {
-    const endpoint = applicationType === 'loan' ? '/api/admin/queues/loan' : '/api/admin/queues/membership';
+    const endpoint = applicationType === 'loan' ? '/api/loans' : '/api/membership';
     const pageSize = 100;
     const maxPages = 10;
 
@@ -292,8 +272,8 @@ export default function ApplicationDetail() {
     if (!application) {
       return '';
     }
-    const middle = application.applicant.middleName;
-    const last = application.applicant.lastName;
+    const middle = application.applicant.fathersName;
+    const last = application.applicant.grandfathersName;
     return [application.applicant.firstName, middle, last].filter((part) => Boolean(part && String(part).trim())).join(' ');
   }, [application]);
 
@@ -313,7 +293,7 @@ export default function ApplicationDetail() {
 
     const loanFields: Array<{ label: string; value: string | number | boolean | null | undefined }> = [
       { label: tAdmin('membershipNumberLabel', 'Membership Number'), value: application.membershipNo },
-      { label: tAdmin('registeredMobileLabel', 'Registered Mobile'), value: application.registeredMobile },
+      { label: tAdmin('phoneLabel', 'Phone Number'), value: application.applicant?.phone },
       { label: tAdmin('idTypeLabel', 'ID Type'), value: application.idType },
       { label: tAdmin('maritalStatusLabel', 'Marital Status'), value: application.maritalStatus },
       { label: tAdmin('loanTypeLabel', 'Loan Type'), value: application.loanType },
@@ -353,7 +333,7 @@ export default function ApplicationDetail() {
     setActionLoading(true);
     setError(null);
     try {
-      await adminFetch(`/api/admin/applications/${applicationType}/${resolvedApplicationId}/status`, {
+      await adminFetch(`/api/${applicationType === 'loan' ? 'loans' : 'membership'}/${resolvedApplicationId}/status`, {
         method: 'PATCH',
         body: JSON.stringify({
           status,
@@ -407,7 +387,7 @@ export default function ApplicationDetail() {
     try {
       let expectedUpdatedAt = application.updatedAt;
       for (const nextStatus of transitionPath) {
-        const response = await adminFetch<{ application: DetailPayload }>(`/api/admin/applications/${applicationType}/${resolvedApplicationId}/status`, {
+        const response = await adminFetch<{ application: DetailPayload }>(`/api/${applicationType === 'loan' ? 'loans' : 'membership'}/${resolvedApplicationId}/status`, {
           method: 'PATCH',
           body: JSON.stringify({
             status: nextStatus,
@@ -443,7 +423,7 @@ export default function ApplicationDetail() {
     setActionLoading(true);
     setError(null);
     try {
-      await adminFetch(`/api/admin/applications/${applicationType}/${resolvedApplicationId}/notes`, {
+      await adminFetch(`/api/${applicationType === 'loan' ? 'loans' : 'membership'}/${resolvedApplicationId}/notes`, {
         method: 'POST',
         body: JSON.stringify({ content: noteInput.trim(), isInternal: true }),
       });
@@ -461,7 +441,10 @@ export default function ApplicationDetail() {
     setError(null);
     try {
       if (action === 'verified') {
-        await adminFetch(`/api/admin/documents/${documentId}/verify`, { method: 'PATCH' });
+        await adminFetch(`/api/${applicationType === 'loan' ? 'loans' : 'membership'}/${resolvedApplicationId}/documents/${documentId}/verify`, { 
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'VERIFIED' })
+        });
       } else {
         const prompted = window.prompt(tAdmin('reasonForRejection', 'Reason for rejection'), tAdmin('rejectedByReviewer', 'Rejected by reviewer'));
         const reason = prompted?.trim();
@@ -469,9 +452,9 @@ export default function ApplicationDetail() {
           setActionLoading(false);
           return;
         }
-        await adminFetch(`/api/admin/documents/${documentId}/reject`, {
+        await adminFetch(`/api/${applicationType === 'loan' ? 'loans' : 'membership'}/${resolvedApplicationId}/documents/${documentId}/verify`, {
           method: 'PATCH',
-          body: JSON.stringify({ reason }),
+          body: JSON.stringify({ status: 'REJECTED', rejectionReason: reason }),
         });
       }
 
@@ -600,10 +583,10 @@ export default function ApplicationDetail() {
             <TabsTrigger value="timeline"><Clock className="mr-1 h-4 w-4" /> {tAdmin('timeline', 'Timeline')}</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="application" className="space-y-4">
-              <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
-                <h3 className="mb-4 font-semibold text-slate-900 text-lg">{tAdmin('applicantInformation', 'Applicant Information')}</h3>
-                <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+          <TabsContent value="application" className="space-y-8 pt-4">
+              <div>
+                <h3 className="mb-4 font-semibold text-slate-900 border-b border-slate-100 pb-2">{tAdmin('applicantInformation', 'Applicant Information')}</h3>
+                <div className="grid grid-cols-1 gap-6 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs font-medium text-slate-600 mb-1">{tAdmin('applicant', 'Applicant')}</p>
                     <p className="text-slate-900 font-medium">{applicantName}</p>
@@ -627,9 +610,9 @@ export default function ApplicationDetail() {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
-                <h3 className="mb-4 font-semibold text-slate-900 text-lg">{tAdmin('applicationDetails', 'Application Details')}</h3>
-                <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <h3 className="mb-4 font-semibold text-slate-900 border-b border-slate-100 pb-2">{tAdmin('applicationDetails', 'Application Details')}</h3>
+                <div className="grid grid-cols-1 gap-6 text-sm sm:grid-cols-2">
                   {categoryFields.map((field) => (
                     <div key={field.label}>
                       <p className="text-xs font-medium text-slate-600 mb-1">{field.label}</p>
@@ -640,10 +623,10 @@ export default function ApplicationDetail() {
               </div>
             </TabsContent>
 
-          <TabsContent value="documents">
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 space-y-4">
+          <TabsContent value="documents" className="pt-4">
+            <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 mb-2">{tAdmin('documentsSubmitted', 'Documents Submitted')}</h3>
+                <h3 className="text-sm font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-2">{tAdmin('documentsSubmitted', 'Documents Submitted')}</h3>
                 <p className="text-xs text-slate-600">{tAdmin('reviewDocumentsFromHere', 'Review and approve/reject documents directly from this tab.')}</p>
               </div>
               <div className="overflow-x-auto">
@@ -658,12 +641,12 @@ export default function ApplicationDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {application.documents.length === 0 && (
+                    {(!application.documents || application.documents.length === 0) && (
                       <tr>
                         <td className="px-4 py-4 text-sm text-slate-600 text-center" colSpan={5}>{tAdmin('noDocumentsUploadedYet', 'No documents uploaded yet.')}</td>
                       </tr>
                     )}
-                    {application.documents.map((document) => (
+                    {(application.documents || []).map((document) => (
                       <tr key={document.id} className="border-b border-slate-200 hover:bg-slate-50/50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-slate-900">{labelizeStatus(document.category)}</td>
                         <td className="px-4 py-3 text-sm text-slate-700">{document.originalName}</td>
@@ -729,9 +712,9 @@ export default function ApplicationDetail() {
             </div>
           </TabsContent>
 
-          <TabsContent value="notes" className="space-y-4">
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
-              <h3 className="mb-4 font-semibold text-slate-900">{tAdmin('addInternalNote', 'Add Internal Note')}</h3>
+          <TabsContent value="notes" className="space-y-6 pt-4">
+            <div>
+              <h3 className="mb-4 font-semibold text-slate-900 border-b border-slate-100 pb-2">{tAdmin('addInternalNote', 'Add Internal Note')}</h3>
               <form className="space-y-3" onSubmit={addNote}>
                 <Textarea 
                   placeholder={tAdmin('writeInternalNote', 'Write an internal note...')} 
@@ -743,9 +726,9 @@ export default function ApplicationDetail() {
               </form>
             </div>
 
-            {application.notes.length === 0 && <p className="text-sm text-slate-600 bg-white rounded-2xl p-4">{tAdmin('noNotesYet', 'No notes yet.')}</p>}
-            {application.notes.map((note) => (
-              <div key={note.id} className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200">
+            {(!application.notes || application.notes.length === 0) && <p className="text-sm text-slate-600 p-4">{tAdmin('noNotesYet', 'No notes yet.')}</p>}
+            {(application.notes || []).map((note) => (
+              <div key={note.id} className="rounded-xl bg-slate-50 p-4 border border-transparent">
                 <p className="mb-3 text-sm text-slate-900 leading-relaxed">{note.content}</p>
                 <div className="flex items-center gap-3 text-xs text-slate-600 pt-2 border-t border-slate-100">
                   <span className="font-medium text-slate-900">{note.author.name}</span>
@@ -755,15 +738,15 @@ export default function ApplicationDetail() {
             ))}
           </TabsContent>
 
-          <TabsContent value="timeline">
-            <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+          <TabsContent value="timeline" className="pt-4">
+            <div>
               <div className="space-y-0">
-                {application.workflow.length === 0 && <p className="text-sm text-slate-600">{tAdmin('noWorkflowActionsYet', 'No workflow actions yet.')}</p>}
-                {application.workflow.map((item, i) => (
+                {(!application.workflow || application.workflow.length === 0) && <p className="text-sm text-slate-600">{tAdmin('noWorkflowActionsYet', 'No workflow actions yet.')}</p>}
+                {(application.workflow || []).map((item, i) => (
                   <div key={item.id} className="relative flex gap-4 pb-8 last:pb-0">
                     <div className="flex flex-col items-center">
                       <div className="mt-1 h-3 w-3 shrink-0 rounded-full bg-blue-600" />
-                      {i < application.workflow.length - 1 && <div className="w-px flex-1 bg-slate-200" />}
+                      {i < (application.workflow || []).length - 1 && <div className="w-px flex-1 bg-slate-200" />}
                     </div>
                     <div className="pb-2 flex-1">
                       <p className="text-sm font-semibold text-slate-900">{labelizeStatus(item.fromStatus)} <span className="text-slate-500">→</span> {labelizeStatus(item.toStatus)}</p>

@@ -21,86 +21,7 @@ interface SavingsProps {
   onNavigate: (page: Page) => void;
 }
 
-const fallbackSavingsProducts = [
-  {
-    icon: <PiggyBank className="h-8 w-8 text-blue-600" />,
-    titleKey: 'savingsFallbackRegularTitle',
-    titleFallback: 'Regular Compulsory Savings',
-    descriptionKey: 'savingsFallbackRegularDescription',
-    descriptionFallback: 'The foundation of your SACCO membership. Build a strong financial base while unlocking access to our loan products.',
-    features: [
-      { key: 'savingsFeatureMin500Month', fallback: 'Minimum ETB 500/month' },
-      { key: 'savingsFeatureLoanQualifyInstant', fallback: 'Qualifies you for loans instantly' },
-      { key: 'savingsFeatureAnnualDividends', fallback: 'Earns annual dividends' },
-      { key: 'savingsFeatureSafeSecure', fallback: 'Safe and secure' },
-    ],
-  },
-  {
-    icon: <TrendingUp className="h-8 w-8 text-blue-600" />,
-    titleKey: 'savingsFallbackVoluntaryTitle',
-    titleFallback: 'Voluntary Savings',
-    descriptionKey: 'savingsFallbackVoluntaryDescription',
-    descriptionFallback: 'Flexible savings for your specific goals. Deposit and withdraw at your convenience while earning competitive interest.',
-    features: [
-      { key: 'savingsFeatureNoMinBalance', fallback: 'No minimum balance required' },
-      { key: 'savingsFeatureFlexibleDeposits', fallback: 'Flexible deposits' },
-      { key: 'savingsFeatureWithdrawAnytime', fallback: 'Withdraw anytime' },
-      { key: 'savingsFeatureCompetitiveInterest', fallback: 'Competitive interest rate' },
-    ],
-  },
-  {
-    icon: <Baby className="h-8 w-8 text-blue-600" />,
-    titleKey: 'savingsFallbackChildrenTitle',
-    titleFallback: "Children's Savings Account",
-    descriptionKey: 'savingsFallbackChildrenDescription',
-    descriptionFallback: 'Secure your child\'s future with an account that grows with them. Ideal for education, first car, or starting capital.',
-    features: [
-      { key: 'savingsFeatureHighYieldInterest', fallback: 'High-yield interest' },
-      { key: 'savingsFeatureEducationalBonuses', fallback: 'Educational bonuses' },
-      { key: 'savingsFeatureParentControl18', fallback: 'Parent-controlled until 18' },
-      { key: 'savingsFeatureNoMonthlyFees', fallback: 'No monthly fees' },
-    ],
-  },
-  {
-    icon: <Building2 className="h-8 w-8 text-blue-600" />,
-    titleKey: 'savingsFallbackFixedDepositTitle',
-    titleFallback: 'Fixed Deposit Account',
-    descriptionKey: 'savingsFallbackFixedDepositDescription',
-    descriptionFallback: 'Lock away a lump sum for a fixed period to guarantee our highest interest rates. Perfect for long-term investments.',
-    features: [
-      { key: 'savingsFeatureHighestRates', fallback: 'Highest interest rates' },
-      { key: 'savingsFeatureTermOptions', fallback: '3, 6, 12, or 24-month terms' },
-      { key: 'savingsFeatureGuaranteedReturns', fallback: 'Guaranteed returns' },
-      { key: 'savingsFeatureInterestOnMaturity', fallback: 'Interest paid on maturity' },
-    ],
-  },
-  {
-    icon: <Wallet className="h-8 w-8 text-blue-600" />,
-    titleKey: 'savingsFallbackTargetTitle',
-    titleFallback: 'Target Savings',
-    descriptionKey: 'savingsFallbackTargetDescription',
-    descriptionFallback: 'Save towards a specific goal-like a wedding, vacation, or down payment. Automatically lock funds until target date.',
-    features: [
-      { key: 'savingsFeatureGoalOriented', fallback: 'Goal-oriented' },
-      { key: 'savingsFeatureAutomatedTransfers', fallback: 'Automated transfers' },
-      { key: 'savingsFeatureBonusOnCompletion', fallback: 'Bonus interest on completion' },
-      { key: 'savingsFeatureEarlyWithdrawalPenalty', fallback: 'Penalty for early withdrawal' },
-    ],
-  },
-  {
-    icon: <ShieldCheck className="h-8 w-8 text-blue-600" />,
-    titleKey: 'savingsFallbackRetirementTitle',
-    titleFallback: 'Retirement Savings Plan',
-    descriptionKey: 'savingsFallbackRetirementDescription',
-    descriptionFallback: 'Specialized long-term savings to ensure a comfortable future. Tax-efficient and highly secure growth.',
-    features: [
-      { key: 'savingsFeatureTaxBenefits', fallback: 'Tax benefits' },
-      { key: 'savingsFeatureCompoundInterest', fallback: 'Compound interest' },
-      { key: 'savingsFeatureRetirementAdvice', fallback: 'Retirement planning advice' },
-      { key: 'savingsFeatureLumpOrAnnuity', fallback: 'Lump-sum or annuity payout' },
-    ],
-  }
-];
+
 
 export default function Savings({ onNavigate }: SavingsProps) {
   const { tPublic } = usePublicUiI18n();
@@ -132,12 +53,7 @@ export default function Savings({ onNavigate }: SavingsProps) {
 
   const savingsProducts = useMemo(() => {
     if (loadFailed) {
-      return fallbackSavingsProducts.map((product) => ({
-        icon: product.icon,
-        title: tPublic(product.titleKey, product.titleFallback),
-        description: tPublic(product.descriptionKey, product.descriptionFallback),
-        features: product.features.map((feature) => tPublic(feature.key, feature.fallback)),
-      }));
+      return [];
     }
 
     return cmsServices

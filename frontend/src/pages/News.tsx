@@ -4,7 +4,6 @@ import {
   Calendar, ArrowRight, Search, ArrowUp 
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { newsItems } from './newsData';
 import { fetchPublicNews, resolvePublicAssetUrl, type PublicNews } from '@/lib/publicContentApi';
 import PublicServiceNotice from '@/components/PublicServiceNotice';
 import { usePublicUiI18n } from '@/lib/uiI18n';
@@ -40,50 +39,19 @@ export default function News() {
           setItems(
             cmsNews.map((item) => ({
               ...item,
-              image: resolvePublicAssetUrl(item.imageUrl) || newsItems[0]?.image,
+              image: resolvePublicAssetUrl(item.imageUrl) || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&q=80',
               fullContent: item.content || item.excerpt,
               previewText: buildListPreview(item.excerpt, item.content),
               date: new Date(item.updatedAt).toLocaleDateString(),
             }))
           );
-          return;
+        } else {
+          setItems([]);
         }
-
-        setItems(
-          newsItems.map((item, index) => ({
-            id: String(index),
-            slug: String(index),
-            title: item.title,
-            excerpt: item.excerpt,
-            category: item.category,
-            status: 'PUBLISHED',
-            createdAt: item.date,
-            updatedAt: item.date,
-            image: item.image,
-            fullContent: item.fullContent,
-            previewText: buildListPreview(item.excerpt, item.fullContent),
-            date: item.date,
-          }))
-        );
       } catch {
         if (!mounted) return;
         setIsCmsUnavailable(true);
-        setItems(
-          newsItems.map((item, index) => ({
-            id: String(index),
-            slug: String(index),
-            title: item.title,
-            excerpt: item.excerpt,
-            category: item.category,
-            status: 'PUBLISHED',
-            createdAt: item.date,
-            updatedAt: item.date,
-            image: item.image,
-            fullContent: item.fullContent,
-            previewText: buildListPreview(item.excerpt, item.fullContent),
-            date: item.date,
-          }))
-        );
+        setItems([]);
       }
     };
 
@@ -132,7 +100,7 @@ export default function News() {
 
       {isCmsUnavailable ? (
         <section className="container mx-auto mb-8 px-5 sm:px-6 md:mb-10">
-          <PublicServiceNotice message={tPublic('newsPageServiceUnavailable', 'Live news service is temporarily unavailable. Showing latest cached updates.')} />
+          <PublicServiceNotice message={tPublic('newsPageServiceUnavailable', 'Live news service is temporarily unavailable. Please try again later.')} />
         </section>
       ) : null}
 
@@ -205,7 +173,7 @@ export default function News() {
                       </p>
                     </div>
                     <Link 
-                      to={`/news/${item.slug || index}`} 
+                      to={`/news/${item.id}`} 
                       className="mt-4 inline-flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-blue-950 transition-all hover:text-blue-600 md:tracking-[0.3em]"
                     >
                       {tPublic('newsPageViewReport', 'View Report')} <ArrowRight size={14} className="group-hover:translate-x-2 transition-transform" />

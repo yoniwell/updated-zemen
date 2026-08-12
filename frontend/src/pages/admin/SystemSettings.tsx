@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { useAdminI18n } from '@/lib/uiI18n';
+import { adminFetch } from '@/lib/adminApi';
 
 export default function SystemSettings() {
   const { tAdmin } = useAdminI18n();
@@ -9,11 +10,12 @@ export default function SystemSettings() {
   const [contactEmail, setContactEmail] = useState('info@zemensacco.com');
   const [primaryPhone, setPrimaryPhone] = useState('0953444411');
   const [threshold, setThreshold] = useState('5000000');
-  const [assignment, setAssignment] = useState('Round Robin');
+  const [assignment, setAssignment] = useState('ROUND_ROBIN');
   const [complianceLock, setComplianceLock] = useState(true);
   const [autoAssign, setAutoAssign] = useState(true);
   const [kycRequired, setKycRequired] = useState(true);
   const [allowResubmission, setAllowResubmission] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const statusDefinitions = [
     [tAdmin('draft', 'Draft'), tAdmin('statusDefinitionDraft', 'Application started but not submitted')],
@@ -26,18 +28,64 @@ export default function SystemSettings() {
     [tAdmin('rejected', 'Rejected'), tAdmin('statusDefinitionRejected', 'Application denied')],
   ];
 
-  const handleSaveSettings = () => {
-    toast.success(tAdmin('systemSettingsSavedSuccessfully', 'System settings saved successfully.'));
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await adminFetch<{ settings: any }>('/api/settings/system');
+        const s = response.settings;
+        if (s) {
+          setOrganizationName(s.organizationName);
+          setContactEmail(s.contactEmail);
+          setPrimaryPhone(s.primaryPhone);
+          setThreshold(String(s.loanApprovalThreshold));
+          setAssignment(s.automatedAssignment);
+          setComplianceLock(s.complianceLock);
+          setAutoAssign(s.autoAssign);
+          setKycRequired(s.kycRequired);
+          setAllowResubmission(s.allowResubmission);
+        }
+      } catch (error) {
+        toast.error(tAdmin('failedLoadSettings', 'Failed to load system settings'));
+      } finally {
+        setLoading(false);
+      }
+    };
+    void fetchSettings();
+  }, [tAdmin]);
+
+  const handleSaveSettings = async () => {
+    try {
+      await adminFetch('/api/settings/system', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          organizationName,
+          contactEmail,
+          primaryPhone,
+          loanApprovalThreshold: Number(threshold),
+          automatedAssignment: assignment,
+          complianceLock,
+          autoAssign,
+          kycRequired,
+          allowResubmission
+        }),
+      });
+      toast.success(tAdmin('systemSettingsSavedSuccessfully', 'System settings saved successfully.'));
+    } catch (error) {
+      toast.error(tAdmin('failedSaveSettings', 'Failed to save system settings'));
+    }
   };
 
   const handleRuleToggle = (ruleName: string, enabled: boolean) => {
     toast.success(tAdmin('ruleToggleStatus', '{{ruleName}} {{status}}.', { ruleName, status: enabled ? tAdmin('enabled', 'enabled') : tAdmin('disabled', 'disabled') }));
   };
 
+  if (loading) {
+    return <p className="rounded-lg bg-white p-4 text-sm text-slate-600">{tAdmin('loadingSettings', 'Loading settings...')}</p>;
+  }
+
   return (
     <section className="space-y-4">
       <article className="space-y-4 rounded-lg bg-white p-4">
-        <h1 className="font-serif text-2xl text-foreground">{tAdmin('systemSettings', 'System Settings')}</h1>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <label className="space-y-1 text-sm font-semibold text-slate-700">

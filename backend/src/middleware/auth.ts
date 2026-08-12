@@ -141,11 +141,9 @@ type AdminModule =
 
 const defaultRoleModules: Record<AdminRole, AdminModule[]> = {
   SUPER_ADMIN: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'document-review', 'audit-log', 'cms', 'user-management', 'settings'],
-  BRANCH_MANAGER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'document-review', 'audit-log', 'settings'],
-  MEMBERSHIP_OFFICER: ['dashboard', 'membership', 'members-list', 'document-review'],
-  LOAN_OFFICER: ['dashboard', 'loan', 'loans-list', 'document-review'],
-  KYC_OFFICER: ['dashboard', 'membership', 'loan', 'document-review'],
-  CONTENT_ADMIN: ['dashboard', 'cms'],
+  BRANCH_MANAGER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'user-management'],
+  OFFICER: ['membership', 'members-list', 'loan', 'loans-list'],
+  CONTENT_MANAGER: ['cms'],
 };
 
 const allowedModules = new Set<AdminModule>([
@@ -161,40 +159,6 @@ const allowedModules = new Set<AdminModule>([
   'settings',
 ]);
 
-const getRoleModules = async (role: AdminRole): Promise<AdminModule[]> => {
-  const overrideKey = `rbac.modules.${role}`;
-  let override: { value: string } | null = null;
-
-  try {
-    override = await prisma.systemSetting.findUnique({
-      where: { key: overrideKey },
-      select: { value: true },
-    });
-  } catch (error) {
-    if (!isPreparedStatementLimitError(error)) {
-      throw error;
-    }
-
-    return defaultRoleModules[role];
-  }
-
-  if (!override?.value) {
-    return defaultRoleModules[role];
-  }
-
-  try {
-    const parsed = JSON.parse(override.value) as string[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      return defaultRoleModules[role];
-    }
-
-    const filtered = parsed.filter((entry): entry is AdminModule => allowedModules.has(entry as AdminModule));
-    return filtered.length ? filtered : defaultRoleModules[role];
-  } catch {
-    return defaultRoleModules[role];
-  }
-};
-
 export const authorizeModule = (module: AdminModule) => {
   return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
     if (!req.user) {
@@ -204,7 +168,7 @@ export const authorizeModule = (module: AdminModule) => {
 
     try {
       const role = req.user.role as AdminRole;
-      const modules = await getRoleModules(role);
+      const modules = defaultRoleModules[role];
 
       if (!modules.includes(module)) {
         sendPermissionError(res, `Role ${role} does not have access to module ${module}`);

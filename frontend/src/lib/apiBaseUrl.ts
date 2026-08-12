@@ -11,5 +11,5 @@ export const getApiBaseUrl = (): string => {
     return '';
   }
 
-  return 'http://localhost:5000';
+  return '';
 };

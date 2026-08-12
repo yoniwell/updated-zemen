@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, Share2, Clock, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { newsItems } from './newsData'; 
 import { fetchPublicNewsArticle, resolvePublicAssetUrl, type PublicNews } from '@/lib/publicContentApi';
 import PublicServiceNotice from '@/components/PublicServiceNotice';
 
@@ -28,22 +27,6 @@ export default function NewsDetail() {
 
     let mounted = true;
 
-    const fromFallback = (): DetailArticle | null => {
-      const byIndex = Number.isFinite(Number(id)) ? newsItems[Number(id)] : null;
-      if (byIndex) {
-        return byIndex;
-      }
-
-      const bySlug = newsItems.find((item) =>
-        item.title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-') === (id || '').toLowerCase()
-      );
-
-      return bySlug || null;
-    };
-
     const loadArticle = async () => {
       if (!id) {
         if (mounted) setLoading(false);
@@ -60,14 +43,14 @@ export default function NewsDetail() {
           title: apiArticle.title,
           date: new Date(apiArticle.updatedAt).toLocaleDateString(),
           category: apiArticle.category,
-          image: resolvePublicAssetUrl(apiArticle.imageUrl) || newsItems[0]?.image || '',
+          image: resolvePublicAssetUrl(apiArticle.imageUrl) || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=1600&q=80',
           excerpt: apiArticle.excerpt,
           fullContent: apiArticle.content || apiArticle.excerpt,
         });
       } catch {
         if (!mounted) return;
         setIsCmsUnavailable(true);
-        setArticle(fromFallback());
+        setArticle(null);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -142,7 +125,7 @@ export default function NewsDetail() {
       >
         {isCmsUnavailable ? (
           <div className="mb-8">
-            <PublicServiceNotice message="Live article service is temporarily unavailable. Showing fallback content where available." />
+            <PublicServiceNotice message="Live article service is temporarily unavailable. Please try again later." />
           </div>
         ) : null}
 

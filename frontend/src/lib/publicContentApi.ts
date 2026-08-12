@@ -62,6 +62,8 @@ export type PublicBranch = {
   location: string;
   officeHours: string;
   mapUrl: string;
+  phonePrimary?: string;
+  phoneSecondary?: string;
 };
 
 export type PublicPhoneContact = {
@@ -149,28 +151,44 @@ async function fetchPublic<T>(endpoint: string): Promise<T> {
   }
 
   // FIX 3: Safe parse for final data layer return
-  return response.json() as Promise<T>;
+  const json = await response.json();
+  if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 
 export async function fetchPublicFaqs(): Promise<PublicFaq[]> {
   const result = await fetchPublic<{ faqs: PublicFaq[] }>('/api/content/faqs');
-  return result.faqs;
+  return result.faqs.filter(faq => (faq as any).published === true);
 }
 
 export async function fetchPublicNews(): Promise<PublicNews[]> {
-  const result = await fetchPublic<{ news: PublicNews[] }>('/api/content/news');
-  return result.news;
+  const result = await fetchPublic<any>('/api/news');
+  return Array.isArray(result) ? result : (result?.news ?? result?.data ?? []);
 }
 
 export async function fetchPublicNewsArticle(slugOrId: string): Promise<PublicNews> {
-  const result = await fetchPublic<{ article: PublicNews }>(`/api/content/news/${encodeURIComponent(slugOrId)}`);
-  return result.article;
+  const result: any = await fetchPublic<any>(`/api/news/${encodeURIComponent(slugOrId)}`);
+  return result?.article ?? result?.data ?? result;
 }
-
 export async function fetchPublicDownloads(): Promise<PublicDownloadCategory[]> {
-  const result = await fetchPublic<{ categories: PublicDownloadCategory[] }>('/api/content/downloads');
-  return result.categories;
+  const result = await fetchPublic<{ categories: any[] }>('/api/downloads');
+  // It already returns published categories with published files from backend
+  const rawCategories = result.categories || (result as any[]) || [];
+  
+  return rawCategories.map(cat => ({
+    id: cat.id,
+    title: cat.name,
+    files: (cat.files || []).map((file: any) => ({
+      id: file.id,
+      name: file.name,
+      size: file.fileSize,
+      type: file.fileType,
+      link: resolvePublicAssetUrl(file.fileUrl),
+    })),
+  })).filter(cat => cat.files && cat.files.length > 0);
 }
 
 export async function fetchPublicBranches(): Promise<{
@@ -178,37 +196,54 @@ export async function fetchPublicBranches(): Promise<{
   phoneContacts: PublicPhoneContact[];
   phoneNumbers: string[];
 }> {
-  return fetchPublic<{
-    branches: PublicBranch[];
-    phoneContacts: PublicPhoneContact[];
-    phoneNumbers: string[];
-  }>('/api/content/branches');
+  const result = await fetchPublic<{ branches: PublicBranch[] }>('/api/content/branches');
+  const branches = result.branches || [];
+  
+  const phoneContacts: PublicPhoneContact[] = [];
+  branches.forEach(branch => {
+    if (branch.phonePrimary?.trim()) {
+      phoneContacts.push({ name: branch.name, number: branch.phonePrimary });
+    }
+    if (branch.phoneSecondary?.trim()) {
+      phoneContacts.push({ name: `${branch.name} (Alt)`, number: branch.phoneSecondary });
+    }
+  });
+
+  return {
+    branches,
+    phoneContacts,
+    phoneNumbers: phoneContacts.map(c => c.number)
+  };
 }
 
 export async function fetchPublicServices(): Promise<PublicService[]> {
-  const result = await fetchPublic<{ services: Array<Omit<PublicService, 'features'> & { features: unknown }> }>('/api/content/services');
-  return result.services.map((service) => ({
-    ...service,
-    features: Array.isArray(service.features) ? service.features.filter((item): item is string => typeof item === 'string') : [],
-  }));
+  const result = await fetchPublic<{ services: Array<Omit<PublicService, 'features'> & { features: unknown, status: string }> }>('/api/content/services');
+  return result.services
+    .filter(service => service.status === 'PUBLISHED')
+    .map((service) => ({
+      ...service,
+      features: Array.isArray(service.features) ? service.features.filter((item): item is string => typeof item === 'string') : [],
+    }));
 }
 
 export async function fetchPublicSavings(): Promise<PublicSaving[]> {
-  const result = await fetchPublic<{ savings: Array<Omit<PublicSaving, 'features'> & { features: unknown }> }>('/api/content/savings');
-  return result.savings.map((s) => ({
-    ...s,
-    features: Array.isArray(s.features) ? s.features.filter((item): item is string => typeof item === 'string') : [],
-  }));
+  const result = await fetchPublic<{ savings: Array<Omit<PublicSaving, 'features'> & { features: unknown, status: string }> }>('/api/content/savings');
+  return result.savings
+    .filter(s => s.status === 'PUBLISHED')
+    .map((s) => ({
+      ...s,
+      features: Array.isArray(s.features) ? s.features.filter((item): item is string => typeof item === 'string') : [],
+    }));
 }
 
 export async function fetchPublicLoanProducts(): Promise<PublicLoanProduct[]> {
   const result = await fetchPublic<{ loanProducts: PublicLoanProduct[] }>('/api/content/loan-products');
-  return result.loanProducts;
+  return result.loanProducts.filter(loan => loan.status === 'PUBLISHED');
 }
 
 export async function fetchPublicAnnouncements(): Promise<PublicAnnouncement[]> {
   const result = await fetchPublic<{ announcements: PublicAnnouncement[] }>('/api/content/announcements');
-  return result.announcements;
+  return result.announcements.filter(ann => ann.status === 'PUBLISHED' || ann.status === 'Active');
 }
 
 export async function submitPublicInquiry(payload: PublicInquiryInput): Promise<void> {
@@ -225,4 +260,34 @@ export async function submitPublicInquiry(payload: PublicInquiryInput): Promise<
     const body = (await response.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error || `Request failed (${response.status})`);
   }
+}
+
+export type ConfigSavingType = {
+  id: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+};
+
+export type ConfigLoanType = {
+  id: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+  minAmount?: number | null;
+  maxAmount?: number | null;
+  minTenure?: number | null;
+  maxTenure?: number | null;
+};
+
+export async function fetchConfigSavingTypes(): Promise<ConfigSavingType[]> {
+  const result = await fetchPublic<{ savingTypes: ConfigSavingType[] }>('/api/settings/saving-types');
+  return result.savingTypes;
+}
+
+export async function fetchConfigLoanTypes(): Promise<ConfigLoanType[]> {
+  const result = await fetchPublic<{ loanTypes: ConfigLoanType[] }>('/api/settings/loan-types');
+  return result.loanTypes;
 }

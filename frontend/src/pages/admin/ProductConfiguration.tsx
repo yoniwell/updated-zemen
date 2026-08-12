@@ -51,10 +51,6 @@ export default function ProductConfiguration() {
 
   return (
     <section className="space-y-4">
-      <div>
-        <h1 className="font-serif text-2xl text-foreground">{tAdmin('productConfiguration', 'Product Configuration')}</h1>
-        <p className="text-sm text-muted-foreground">{tAdmin('maintainLoanProductsMembershipSetup', 'Maintain loan products and membership type setup.')}</p>
-      </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <article className="rounded-lg bg-white p-4">

@@ -33,7 +33,7 @@ export default function AdminLogin() {
 
       const responseText = await response.text();
       let payload: {
-        error?: string;
+        error?: string | { message: string };
         token?: string;
         user?: {
           id: string;
@@ -41,6 +41,10 @@ export default function AdminLogin() {
           email: string;
           role: string;
           branch?: { id: string; name: string; code: string } | null;
+        };
+        data?: {
+          token?: string;
+          user?: any;
         };
       } = {};
 
@@ -50,12 +54,16 @@ export default function AdminLogin() {
         payload = {};
       }
 
-      if (!response.ok || !payload.token || !payload.user) {
-        toast.error(payload.error || `${t('adminLoginFailedPrefix', 'Login failed (HTTP')} ${response.status})`);
+      const token = payload.data?.token || payload.token;
+      const user = payload.data?.user || payload.user;
+
+      if (!response.ok || !token || !user) {
+        const errorMsg = typeof payload.error === 'string' ? payload.error : payload.error?.message;
+        toast.error(errorMsg || `${t('adminLoginFailedPrefix', 'Login failed (HTTP')} ${response.status})`);
         return;
       }
 
-      setAdminSession(payload.token, payload.user);
+      setAdminSession(token, user);
       toast.success(t('adminLoginSuccess', 'Admin login successful'));
       navigate('/admin');
     } catch {

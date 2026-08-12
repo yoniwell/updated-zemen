@@ -4,8 +4,10 @@ import { toast } from 'sonner';
 import { adminFetch } from '@/lib/adminApi';
 import { getAdminUser } from '@/lib/adminAuth';
 import { getApiBaseUrl } from '@/lib/apiBaseUrl';
-import { APPLICATION_STATUS_OPTIONS, LOAN_TYPE_OPTIONS } from '@/lib/adminOptions';
+import { APPLICATION_STATUS_OPTIONS } from '@/lib/adminOptions';
+import { useAdminLoanTypes } from '@/hooks/useAdminLoanTypes';
 import StatusBadge from '@/components/admin/StatusBadge';
+import ConfirmDeleteModal from '@/components/admin/ConfirmDeleteModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAdminI18n } from '@/lib/uiI18n';
 import { useAdminBranches } from '@/hooks/useAdminBranches';
-import { loanTypeRules } from '@/schemas/loanSchema';
+import { genericTenures } from '@/schemas/loanSchema';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@radix-ui/react-label';
@@ -40,8 +42,8 @@ type LoanApplication = {
   tenure?: number | null;
   applicant: {
     firstName: string;
-    middleName?: string | null;
-    lastName?: string | null;
+    fathersName?: string | null;
+    grandfathersName?: string | null;
     phone: string;
   };
   branch?: {
@@ -65,7 +67,7 @@ type LoanDetailResponse = {
     id: string;
     referenceNo: string;
     status: string;
-    registeredMobile?: string | null;
+
     idType?: string | null;
     maritalStatus?: string | null;
     membershipNo?: string | null;
@@ -89,8 +91,8 @@ type LoanDetailResponse = {
     }>;
     applicant: {
       firstName: string;
-      middleName?: string | null;
-      lastName?: string | null;
+      fathersName?: string | null;
+      grandfathersName?: string | null;
       phone: string;
       email?: string | null;
     };
@@ -100,7 +102,7 @@ type LoanDetailResponse = {
 type EditableLoanForm = {
   email: string;
   membershipNo: string;
-  registeredMobile: string;
+  phone: string;
   idType: string;
   maritalStatus: string;
   loanType: string;
@@ -158,6 +160,7 @@ const uploadLoanDocument = async (applicationId: string, file: File, category: s
 export default function LoansList() {
   const { tAdmin } = useAdminI18n();
   const { branches, branchNames } = useAdminBranches();
+  const { loanTypes, loanTypeNames } = useAdminLoanTypes();
   const currentUser = useMemo(() => getAdminUser(), []);
   const canDeleteLoans = currentUser?.role === 'SUPER_ADMIN';
   const [applications, setApplications] = useState<LoanApplication[]>([]);
@@ -172,7 +175,7 @@ export default function LoansList() {
   const [density] = useState<'compact' | 'comfortable'>('comfortable');
   const [reloadSeq, setReloadSeq] = useState(0);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'APPROVED' | 'ACTIVATED'>('all');
+
   const [loanTypeFilter, setLoanTypeFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [openEdit, setOpenEdit] = useState(false);
@@ -182,7 +185,23 @@ export default function LoansList() {
   const [editSaving, setEditSaving] = useState(false);
   const [editDocuments, setEditDocuments] = useState<Array<{ id: string; category: string; originalName: string; status: string }>>([]);
   const [editUploadedFiles, setEditUploadedFiles] = useState<Partial<Record<LoanFileField, File>>>({});
-  const [pendingAction, setPendingAction] = useState<{ type: 'deactivate' | 'delete'; loan: LoanApplication } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LoanApplication | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
+  const confirmDeleteLoan = async () => {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
+    try {
+      await adminFetch(`/api/loans/${deleteTarget.id}`, { method: 'DELETE' });
+      toast.success(tAdmin('loanDeletedSuccessfully', '{{referenceNo}} deleted successfully.', { referenceNo: deleteTarget.referenceNo }));
+      setDeleteTarget(null);
+      setReloadSeq((value) => value + 1);
+    } catch (actionError) {
+      toast.error(actionError instanceof Error ? actionError.message : tAdmin('failedDeleteLoan', 'Failed to delete loan'));
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  };
 
   const loadApprovedLoans = useCallback(async () => {
     setLoading(true);
@@ -195,10 +214,10 @@ export default function LoansList() {
         sortBy,
         sortOrder,
       });
-      params.set('status', statusFilter === 'all' ? 'APPROVED,ACTIVATED' : statusFilter);
+      params.set('status', 'APPROVED');
       if (search.trim()) params.set('search', search.trim());
       if (loanTypeFilter !== 'all') params.set('loanType', loanTypeFilter);
-      if (branchFilter !== 'all') params.set('branchName', branchFilter);
+      if (branchFilter !== 'all') params.set('branchId', branchFilter);
 
       const response = await adminFetch<LoanListResponse>(`/api/loans?${params.toString()}`);
       setApplications(response.applications);
@@ -209,11 +228,11 @@ export default function LoansList() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, sortBy, sortOrder, search, statusFilter, loanTypeFilter, branchFilter, tAdmin]);
+  }, [page, limit, sortBy, sortOrder, search, loanTypeFilter, branchFilter, tAdmin]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter, loanTypeFilter, branchFilter, limit, sortBy, sortOrder]);
+  }, [search, loanTypeFilter, branchFilter, limit, sortBy, sortOrder]);
 
   useEffect(() => {
     void loadApprovedLoans();
@@ -261,19 +280,10 @@ export default function LoansList() {
   const approvedLoans = useMemo(() => applications, [applications]);
 
   const loanTypeOptions = useMemo(() => {
-    return [...LOAN_TYPE_OPTIONS].sort((a, b) => a.localeCompare(b));
-  }, []);
+    return [...loanTypeNames].sort((a, b) => a.localeCompare(b));
+  }, [loanTypeNames]);
 
-  const branchOptions = useMemo(() => {
-    const names = new Set<string>(branchNames);
-    applications.forEach((application) => {
-      if (application.branch?.name) {
-        names.add(application.branch.name);
-      }
-    });
-    names.add('UNASSIGNED');
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [applications, branchNames]);
+
 
   const setEditUploadedFile = (field: LoanFileField, file: File | null) => {
     setEditUploadedFiles((prev) => {
@@ -287,17 +297,7 @@ export default function LoansList() {
     });
   };
 
-  const approvedStatusOptions = APPLICATION_STATUS_OPTIONS.filter((status) => status === 'APPROVED' || status === 'ACTIVATED');
 
-  const loanTypeLabel: Record<string, string> = {
-    REGULAR_LOAN: tAdmin('loanTypeRegular', 'Regular Loan'),
-    SPECIAL_SHORT_TERM_LOAN: tAdmin('loanTypeSpecialShortTerm', 'Special Short Term Loan'),
-    SHORT_TERM_LOAN: tAdmin('loanTypeShortTerm', 'Short Term Loan'),
-    INTERMEDIATE_TERM_LOAN: tAdmin('loanTypeIntermediate', 'Intermediate Term Loan'),
-    LONG_TERM_LOAN: tAdmin('loanTypeLongTerm', 'Long Term Loan'),
-    NON_INTERESTS_LOAN: tAdmin('loanTypeNonInterest', 'Non-Interest Loan'),
-    VEHICLES_AND_HOUSE_LOAN: tAdmin('loanTypeVehicleHouse', 'Vehicles & House Loan'),
-  };
 
   const handleOpenEdit = async (loan: LoanApplication) => {
     setEditingLoan(loan);
@@ -311,7 +311,7 @@ export default function LoansList() {
       setEditForm({
         email: detail.applicant.email || '',
         membershipNo: detail.membershipNo || '',
-        registeredMobile: detail.registeredMobile || detail.applicant.phone || '',
+        phone: detail.applicant.phone || '',
         idType: detail.idType || '',
         maritalStatus: detail.maritalStatus || 'SINGLE',
         loanType: detail.loanType || 'PERSONAL',
@@ -365,12 +365,11 @@ export default function LoansList() {
         method: 'PATCH',
         body: JSON.stringify({
           firstName: editingLoan.applicant.firstName,
-          middleName: editingLoan.applicant.middleName || undefined,
-          lastName: editingLoan.applicant.lastName,
-          phone: editingLoan.applicant.phone,
+          fathersName: editingLoan.applicant.fathersName || undefined,
+          grandfathersName: editingLoan.applicant.grandfathersName,
+          phone: editForm.phone || undefined,
           email: editForm.email || undefined,
           membershipNo: editForm.membershipNo || undefined,
-          registeredMobile: editForm.registeredMobile || undefined,
           idType: editForm.idType || undefined,
           maritalStatus: editForm.maritalStatus || undefined,
           loanType: editForm.loanType,
@@ -423,29 +422,12 @@ export default function LoansList() {
   };
 
   const handleDeactivateLoan = async (loan: LoanApplication) => {
-    if (loan.status !== 'ACTIVATED') {
-      toast.info(tAdmin('loanAlreadyNotActive', '{{referenceNo}} is already not active.', { referenceNo: loan.referenceNo }));
-      return;
-    }
-
-    try {
-      await adminFetch(`/api/admin/applications/loan/${loan.id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'APPROVED',
-          note: 'Deactivated from loans list',
-        }),
-      });
-      toast.success(tAdmin('loanDeactivatedSuccessfully', '{{referenceNo}} deactivated successfully.', { referenceNo: loan.referenceNo }));
-      setReloadSeq((value) => value + 1);
-    } catch (actionError) {
-      toast.error(actionError instanceof Error ? actionError.message : tAdmin('failedDeactivateLoan', 'Failed to deactivate loan'));
-    }
+    // Removed because ACTIVATED status is deprecated.
   };
 
   const handleDeleteLoan = async (loan: LoanApplication) => {
     try {
-      await adminFetch(`/api/admin/applications/loan/${loan.id}`, {
+      await adminFetch(`/api/loans/${loan.id}`, {
         method: 'DELETE',
       });
       toast.success(tAdmin('loanDeletedSuccessfully', '{{referenceNo}} deleted successfully.', { referenceNo: loan.referenceNo }));
@@ -472,287 +454,308 @@ export default function LoansList() {
   };
 
   return (
-    <section className="space-y-4">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <div className="max-w-7xl mx-auto px-4 py-4">
+      {/* 2.1 Page Header & Primary Actions */}
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{tAdmin('approvedLoansListHeading', 'Approved Loans List')}</h1>
-          <p className="text-sm text-muted-foreground">{tAdmin('approvedLoansListSubheading', 'All approved and activated loan applications')}</p>
+          <h1 className="text-xl font-bold text-slate-900">{tAdmin('approvedLoansListHeading', 'Approved Loans List')}</h1>
+          <p className="text-xs text-slate-500 mt-0.5">{tAdmin('approvedLoansListSubheading', 'All approved loan applications')}</p>
         </div>
+      </div>
 
+      <Dialog open={openEdit} onOpenChange={(open) => { if (!open) closeEditDialog(); }}>
+        <DialogContent className="max-h-[92vh] w-[92vw] overflow-y-auto sm:max-w-[92vw] xl:max-w-7xl">
+          <DialogHeader>
+            <DialogTitle>{tAdmin('editLoan', 'Edit Loan')} {editingLoan ? `- ${editingLoan.referenceNo}` : ''}</DialogTitle>
+          </DialogHeader>
 
-        <Dialog open={openEdit} onOpenChange={(open) => { if (!open) closeEditDialog(); }}>
-          <DialogContent className="max-h-[92vh] w-[92vw] overflow-y-auto sm:max-w-[92vw] xl:max-w-7xl">
-            <DialogHeader>
-              <DialogTitle>{tAdmin('editLoan', 'Edit Loan')} {editingLoan ? `- ${editingLoan.referenceNo}` : ''}</DialogTitle>
-            </DialogHeader>
+          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('reference', 'Reference')}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{editingLoan?.referenceNo || tAdmin('emDash', '—')}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('applicant', 'Applicant')}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">
+                {editingLoan ? [editingLoan.applicant.firstName, editingLoan.applicant.fathersName, editingLoan.applicant.grandfathersName].filter((part) => Boolean(part && part.trim())).join(' ') : tAdmin('emDash', '—')}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('status', 'Status')}</p>
+              <div className="mt-1">{editingLoan ? <StatusBadge status={editingLoan.status} /> : tAdmin('emDash', '—')}</div>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('loanType', 'Loan Type')}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{editingLoan?.loanType || tAdmin('emDash', '—')}</p>
+            </div>
+          </div>
 
-            <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm sm:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('reference', 'Reference')}</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{editingLoan?.referenceNo || tAdmin('emDash', '—')}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('applicant', 'Applicant')}</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {editingLoan ? [editingLoan.applicant.firstName, editingLoan.applicant.middleName, editingLoan.applicant.lastName].filter((part) => Boolean(part && part.trim())).join(' ') : tAdmin('emDash', '—')}
-                </p>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('status', 'Status')}</p>
-                <div className="mt-1">{editingLoan ? <StatusBadge status={editingLoan.status} /> : tAdmin('emDash', '—')}</div>
-              </div>
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{tAdmin('loanType', 'Loan Type')}</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{editingLoan?.loanType ? (loanTypeLabel[editingLoan.loanType] || editingLoan.loanType) : tAdmin('emDash', '—')}</p>
+          {editLoading || !editForm ? (
+            <p className="rounded-md bg-slate-50 p-4 text-sm text-muted-foreground">{tAdmin('loadingLoanDetails', 'Loading loan details...')}</p>
+          ) : (
+            <div className="space-y-4 pt-1">
+              <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:grid-cols-3">
+                <h3 className="md:col-span-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{tAdmin('loanApplicantInfo', 'Applicant & Registration')}</h3>
+                <Field label={tAdmin('email', 'Email')}><Input type="email" placeholder="e.g. selam@example.com" value={editForm.email} onChange={(event) => updateEditField('email', event.target.value)} /></Field>
+                <Field label={tAdmin('membershipNumberLabel', 'Membership Number')}><Input placeholder="e.g. MEM-2026-000123" value={editForm.membershipNo} onChange={(event) => updateEditField('membershipNo', event.target.value)} /></Field>
+                <Field label={tAdmin('phone', 'Phone Number')}><Input placeholder="e.g. +251911223344" value={editForm.phone} onChange={(event) => updateEditField('phone', event.target.value)} /></Field>
+                <Field label={tAdmin('idTypeLabel', 'ID Type')}>
+                  <select className="h-10 w-full rounded-md border px-3" value={editForm.idType} onChange={(event) => updateEditField('idType', event.target.value)}>
+                    <option value="">{tAdmin('selectOne', 'Select one')}</option>
+                    <option value="NATIONAL_ID">{tAdmin('nationalIdLabel', 'National ID')}</option>
+                    <option value="PASSPORT">{tAdmin('passport', 'Passport')}</option>
+                    <option value="DRIVING_LICENSE">{tAdmin('drivingLicense', 'Driving License')}</option>
+                    <option value="STUDENT_ID">{tAdmin('studentId', 'Student ID')}</option>
+                    <option value="KEBELE_ID">{tAdmin('kebeleId', 'Kebele ID')}</option>
+                  </select>
+                </Field>
+                <Field label={tAdmin('maritalStatus', 'Marital Status')}>
+                  <select className="h-10 w-full rounded-md border px-3" value={editForm.maritalStatus} onChange={(event) => updateEditField('maritalStatus', event.target.value)}>
+                    <option value="SINGLE">{tAdmin('single', 'Single')}</option>
+                    <option value="MARRIED">{tAdmin('married', 'Married')}</option>
+                  </select>
+                </Field>
+              </section>
+
+              <section className="grid gap-5 md:grid-cols-3 mb-6">
+                <h3 className="md:col-span-3 text-sm font-semibold text-slate-900 border-b border-slate-100 pb-2">{tAdmin('loanDetails', 'Loan Details')}</h3>
+                <Field label={tAdmin('loanTypeLabel', 'Loan Type')}>
+                  <select className="h-10 w-full rounded-lg bg-slate-50 border-transparent px-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all" value={editForm.loanType} onChange={(event) => updateEditField('loanType', event.target.value)}>
+                    {loanTypeNames.map((loanType) => (
+                      <option key={loanType} value={loanType}>{loanType}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={tAdmin('branch', 'Branch')}>
+                  <select className="h-10 w-full rounded-lg bg-slate-50 border-transparent px-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all" value={editForm.branchId} onChange={(event) => updateEditField('branchId', event.target.value)}>
+                    <option value="">{tAdmin('unassigned', 'Unassigned')}</option>
+                    {[...branches].sort((a, b) => a.name.localeCompare(b.name)).map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={tAdmin('amount', 'Loan Amount (ETB)')}><Input type="number" min={0} placeholder="0" value={editForm.amount} onChange={(event) => updateEditField('amount', toNumber(event.target.value))} /></Field>
+                <Field label={tAdmin('tenure', 'Tenure (Months)')}>
+                  <select className="h-10 w-full rounded-lg bg-slate-50 border-transparent px-3 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all" value={String(editForm.tenure)} onChange={(event) => updateEditField('tenure', toNumber(event.target.value))}>
+                    {(() => {
+                      const selected = loanTypes.find((lt) => lt.name === editForm.loanType);
+                      const fixed = selected?.maxTenure ?? null;
+                      let tenures = genericTenures;
+                      if (fixed != null) {
+                        tenures = [fixed];
+                      }
+                      return tenures.map((month) => (
+                        <option key={month} value={month}>{month} {tAdmin('months', 'months')}</option>
+                      ));
+                    })()}
+                  </select>
+                </Field>
+              </section>
+
+              <section className="grid gap-5 md:grid-cols-3 mb-6">
+                <h3 className="md:col-span-3 text-sm font-semibold text-slate-900 border-b border-slate-100 pb-2">{tAdmin('documents', 'Submitted Documents')}</h3>
+                {editDocuments.length > 0 ? (
+                  <div className="md:col-span-3 rounded-md bg-slate-50 p-3 text-xs text-slate-700">
+                    {editDocuments.map((doc) => (
+                      <p key={doc.id}>{doc.category}: {doc.originalName} ({doc.status})</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="md:col-span-3 rounded-md bg-slate-50 p-3 text-xs text-slate-500">{tAdmin('noUploadedDocumentsYet', 'No uploaded documents yet.')}</div>
+                )}
+                <FileField label={tAdmin('loanApplicationLetter', 'Loan Application Letter')} onPick={(file) => setEditUploadedFile('loanApplicationLetter', file)} value={editUploadedFiles.loanApplicationLetter?.name} />
+                <FileField label={tAdmin('loanRequestForm', 'Loan Request Form')} onPick={(file) => setEditUploadedFile('loanRequestForm', file)} value={editUploadedFiles.loanRequestForm?.name} />
+                <FileField label={tAdmin('personalPhoto', 'Personal Photo')} onPick={(file) => setEditUploadedFile('personalPhoto', file)} value={editUploadedFiles.personalPhoto?.name} />
+                <FileField label={tAdmin('idFrontPhoto', 'ID Front Photo')} onPick={(file) => setEditUploadedFile('idFrontPhoto', file)} value={editUploadedFiles.idFrontPhoto?.name} />
+                <FileField label={tAdmin('idBackPhoto', 'ID Back Photo')} onPick={(file) => setEditUploadedFile('idBackPhoto', file)} value={editUploadedFiles.idBackPhoto?.name} />
+                <FileField label={tAdmin('marriageCertificate', 'Marriage Certificate')} onPick={(file) => setEditUploadedFile('marriageCertificate', file)} value={editUploadedFiles.marriageCertificate?.name} />
+                <FileField label={tAdmin('collateralDocument', 'Collateral Document')} onPick={(file) => setEditUploadedFile('collateralDocument', file)} value={editUploadedFiles.collateralDocument?.name} />
+                <FileField label={tAdmin('businessPlan', 'Business Plan')} onPick={(file) => setEditUploadedFile('businessPlan', file)} value={editUploadedFiles.businessPlan?.name} />
+              </section>
+
+              <section className="grid gap-5 md:grid-cols-3 mb-6">
+                <h3 className="md:col-span-3 text-sm font-semibold text-slate-900 border-b border-slate-100 pb-2">{tAdmin('collateralAndConsent', 'Collateral & Consent')}</h3>
+                <Field label={tAdmin('collateralTypeLabel', 'Collateral Type')}><Input placeholder="e.g., Land, Building, Vehicle" value={editForm.collateralType} onChange={(event) => updateEditField('collateralType', event.target.value)} /></Field>
+                <div className="md:col-span-2">
+                  <Field label={tAdmin('collateralDescriptionLabel', 'Collateral Description')}><Textarea rows={2} placeholder="Describe the collateral details" value={editForm.collateralDesc} onChange={(event) => updateEditField('collateralDesc', event.target.value)} /></Field>
+                </div>
+                <div className="md:col-span-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-md border border-slate-200 p-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={editForm.termsAccepted} onCheckedChange={(checked) => updateEditField('termsAccepted', checked === true)} id="editLoanTerms" />
+                      <Label htmlFor="editLoanTerms">{tAdmin('termsAcceptedLabel', 'Terms accepted')}</Label>
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-slate-200 p-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={editForm.creditConsent} onCheckedChange={(checked) => updateEditField('creditConsent', checked === true)} id="editLoanCredit" />
+                      <Label htmlFor="editLoanCredit">{tAdmin('creditConsentAcceptedLabel', 'Credit consent accepted')}</Label>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-background/95 pt-4 backdrop-blur">
+                <Button type="button" variant="outline" onClick={closeEditDialog} disabled={editSaving}>{tAdmin('cancel', 'Cancel')}</Button>
+                <Button type="button" onClick={() => { void saveEditedLoan(); }} disabled={editSaving}>{editSaving ? tAdmin('saving', 'Saving...') : tAdmin('saveChanges', 'Save Changes')}</Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-            {editLoading || !editForm ? (
-              <p className="rounded-md bg-slate-50 p-4 text-sm text-muted-foreground">{tAdmin('loadingLoanDetails', 'Loading loan details...')}</p>
-            ) : (
-              <div className="space-y-4 pt-1">
-                <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:grid-cols-3">
-                  <h3 className="md:col-span-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{tAdmin('loanApplicantInfo', 'Applicant & Registration')}</h3>
-                  <Field label={tAdmin('email', 'Email')}><Input type="email" placeholder="e.g. selam@example.com" value={editForm.email} onChange={(event) => updateEditField('email', event.target.value)} /></Field>
-                  <Field label={tAdmin('membershipNumberLabel', 'Membership Number')}><Input placeholder="e.g. MEM-2026-000123" value={editForm.membershipNo} onChange={(event) => updateEditField('membershipNo', event.target.value)} /></Field>
-                  <Field label={tAdmin('registeredMobile', 'Registered Mobile')}><Input placeholder="e.g. +251911223344" value={editForm.registeredMobile} onChange={(event) => updateEditField('registeredMobile', event.target.value)} /></Field>
-                  <Field label={tAdmin('idTypeLabel', 'ID Type')}>
-                    <select className="h-10 w-full rounded-md border px-3" value={editForm.idType} onChange={(event) => updateEditField('idType', event.target.value)}>
-                      <option value="">{tAdmin('selectOne', 'Select one')}</option>
-                      <option value="NATIONAL_ID">{tAdmin('nationalIdLabel', 'National ID')}</option>
-                      <option value="PASSPORT">{tAdmin('passport', 'Passport')}</option>
-                      <option value="DRIVING_LICENSE">{tAdmin('drivingLicense', 'Driving License')}</option>
-                      <option value="STUDENT_ID">{tAdmin('studentId', 'Student ID')}</option>
-                      <option value="KEBELE_ID">{tAdmin('kebeleId', 'Kebele ID')}</option>
-                    </select>
-                  </Field>
-                  <Field label={tAdmin('maritalStatus', 'Marital Status')}>
-                    <select className="h-10 w-full rounded-md border px-3" value={editForm.maritalStatus} onChange={(event) => updateEditField('maritalStatus', event.target.value)}>
-                      <option value="SINGLE">{tAdmin('single', 'Single')}</option>
-                      <option value="MARRIED">{tAdmin('married', 'Married')}</option>
-                    </select>
-                  </Field>
-                </section>
+      {/* 2.2 Filter & Search Bar */}
+      <div className="mb-4 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+          <input 
+            type="text" 
+            placeholder={tAdmin('searchApprovedLoans', 'Search approved loans...')} 
+            value={search} 
+            onChange={(event) => setSearch(event.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white shadow-sm border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow text-sm" 
+          />
+        </div>
 
-                <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:grid-cols-3">
-                  <h3 className="md:col-span-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{tAdmin('loanDetails', 'Loan Details')}</h3>
-                  <Field label={tAdmin('loanTypeLabel', 'Loan Type')}>
-                    <select className="h-10 w-full rounded-md border px-3" value={editForm.loanType} onChange={(event) => updateEditField('loanType', event.target.value)}>
-                      {LOAN_TYPE_OPTIONS.map((loanType) => (
-                        <option key={loanType} value={loanType}>{loanTypeLabel[loanType] || loanType}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label={tAdmin('branch', 'Branch')}>
-                    <select className="h-10 w-full rounded-md border px-3" value={editForm.branchId} onChange={(event) => updateEditField('branchId', event.target.value)}>
-                      <option value="">{tAdmin('unassigned', 'Unassigned')}</option>
-                      {[...branches].sort((a, b) => a.name.localeCompare(b.name)).map((branch) => (
-                        <option key={branch.id} value={branch.id}>{branch.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label={tAdmin('amount', 'Loan Amount (ETB)')}><Input type="number" min={0} placeholder="0" value={editForm.amount} onChange={(event) => updateEditField('amount', toNumber(event.target.value))} /></Field>
-                  <Field label={tAdmin('tenure', 'Tenure (Months)')}>
-                    <select className="h-10 w-full rounded-md border px-3" value={String(editForm.tenure)} onChange={(event) => updateEditField('tenure', toNumber(event.target.value))}>
-                      {(loanTypeRules[editForm.loanType as keyof typeof loanTypeRules]?.tenures || [12, 24, 36, 48, 60]).map((month) => (
-                        <option key={month} value={month}>{month} {tAdmin('months', 'months')}</option>
-                      ))}
-                    </select>
-                  </Field>
-                </section>
+        <select 
+          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
+          value={loanTypeFilter} 
+          onChange={(event) => setLoanTypeFilter(event.target.value)}
+        >
+          <option value="all">{tAdmin('allLoanTypes', 'All Loan Types')}</option>
+          {loanTypeOptions.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
 
-                <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:grid-cols-3">
-                  <h3 className="md:col-span-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{tAdmin('documents', 'Submitted Documents')}</h3>
-                  {editDocuments.length > 0 ? (
-                    <div className="md:col-span-3 rounded-md bg-slate-50 p-3 text-xs text-slate-700">
-                      {editDocuments.map((doc) => (
-                        <p key={doc.id}>{doc.category}: {doc.originalName} ({doc.status})</p>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="md:col-span-3 rounded-md bg-slate-50 p-3 text-xs text-slate-500">{tAdmin('noUploadedDocumentsYet', 'No uploaded documents yet.')}</div>
-                  )}
-                  <FileField label={tAdmin('loanApplicationLetter', 'Loan Application Letter')} onPick={(file) => setEditUploadedFile('loanApplicationLetter', file)} value={editUploadedFiles.loanApplicationLetter?.name} />
-                  <FileField label={tAdmin('loanRequestForm', 'Loan Request Form')} onPick={(file) => setEditUploadedFile('loanRequestForm', file)} value={editUploadedFiles.loanRequestForm?.name} />
-                  <FileField label={tAdmin('personalPhoto', 'Personal Photo')} onPick={(file) => setEditUploadedFile('personalPhoto', file)} value={editUploadedFiles.personalPhoto?.name} />
-                  <FileField label={tAdmin('idFrontPhoto', 'ID Front Photo')} onPick={(file) => setEditUploadedFile('idFrontPhoto', file)} value={editUploadedFiles.idFrontPhoto?.name} />
-                  <FileField label={tAdmin('idBackPhoto', 'ID Back Photo')} onPick={(file) => setEditUploadedFile('idBackPhoto', file)} value={editUploadedFiles.idBackPhoto?.name} />
-                  <FileField label={tAdmin('marriageCertificate', 'Marriage Certificate')} onPick={(file) => setEditUploadedFile('marriageCertificate', file)} value={editUploadedFiles.marriageCertificate?.name} />
-                  <FileField label={tAdmin('collateralDocument', 'Collateral Document')} onPick={(file) => setEditUploadedFile('collateralDocument', file)} value={editUploadedFiles.collateralDocument?.name} />
-                  <FileField label={tAdmin('businessPlan', 'Business Plan')} onPick={(file) => setEditUploadedFile('businessPlan', file)} value={editUploadedFiles.businessPlan?.name} />
-                </section>
-
-                <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm md:grid-cols-3">
-                  <h3 className="md:col-span-3 text-sm font-bold uppercase tracking-wide text-muted-foreground">{tAdmin('collateralAndConsent', 'Collateral & Consent')}</h3>
-                  <Field label={tAdmin('collateralTypeLabel', 'Collateral Type')}><Input placeholder="e.g., Land, Building, Vehicle" value={editForm.collateralType} onChange={(event) => updateEditField('collateralType', event.target.value)} /></Field>
-                  <div className="md:col-span-2">
-                    <Field label={tAdmin('collateralDescriptionLabel', 'Collateral Description')}><Textarea rows={2} placeholder="Describe the collateral details" value={editForm.collateralDesc} onChange={(event) => updateEditField('collateralDesc', event.target.value)} /></Field>
-                  </div>
-                  <div className="md:col-span-3 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-md border border-slate-200 p-3">
-                      <div className="flex items-center gap-2">
-                        <Checkbox checked={editForm.termsAccepted} onCheckedChange={(checked) => updateEditField('termsAccepted', checked === true)} id="editLoanTerms" />
-                        <Label htmlFor="editLoanTerms">{tAdmin('termsAcceptedLabel', 'Terms accepted')}</Label>
-                      </div>
-                    </div>
-                    <div className="rounded-md border border-slate-200 p-3">
-                      <div className="flex items-center gap-2">
-                        <Checkbox checked={editForm.creditConsent} onCheckedChange={(checked) => updateEditField('creditConsent', checked === true)} id="editLoanCredit" />
-                        <Label htmlFor="editLoanCredit">{tAdmin('creditConsentAcceptedLabel', 'Credit consent accepted')}</Label>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t border-slate-200 bg-background/95 pt-4 backdrop-blur">
-                  <Button type="button" variant="outline" onClick={closeEditDialog} disabled={editSaving}>{tAdmin('cancel', 'Cancel')}</Button>
-                  <Button type="button" onClick={() => { void saveEditedLoan(); }} disabled={editSaving}>{editSaving ? tAdmin('saving', 'Saving...') : tAdmin('saveChanges', 'Save Changes')}</Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <select 
+          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
+          value={branchFilter} 
+          onChange={(event) => setBranchFilter(event.target.value)}
+        >
+          <option value="all">{tAdmin('allBranches', 'All Branches')}</option>
+          {branches.map((branch) => (
+            <option key={branch.id} value={branch.id}>{branch.name}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? <p className="rounded-md p-4 text-sm text-muted-foreground">{tAdmin('loadingApprovedLoans', 'Loading approved loans...')}</p> : null}
+      
       {error ? (
-        <div className="flex items-center justify-between gap-3 rounded-md bg-red-50 p-4 text-sm text-red-700">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700 shadow-sm mb-4">
           <p>{error}</p>
-          <Button variant="outline" size="sm" onClick={() => setReloadSeq((value) => value + 1)}>{tAdmin('retry', 'Retry')}</Button>
+          <button className="px-4 py-2 bg-white rounded-lg text-sm font-bold shadow-sm" onClick={() => setReloadSeq((value) => value + 1)}>{tAdmin('retry', 'Retry')}</button>
         </div>
       ) : null}
 
+      {/* 2.3 Data Table */}
       {!loading && !error ? (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white px-3 shadow-sm">
-          <table className="w-full text-sm text-left border-collapse">
-            <thead>
-            <tr>
-              <th colSpan={9} className="p-4 font-normal">
-                <div className="flex flex-wrap gap-3 text-sm font-normal">
-                  <div className="relative min-w-[220px] flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input className="pl-9" placeholder={tAdmin('searchApprovedLoans', 'Search approved loans...')} value={search} onChange={(event) => setSearch(event.target.value)} />
-                  </div>
-
-                  <select className="h-10 w-[170px] rounded-md border border-input bg-background px-3 text-sm" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | 'APPROVED' | 'ACTIVATED')}>
-                    <option value="all">{tAdmin('allStatuses', 'All Statuses')}</option>
-                    {approvedStatusOptions.map((status) => (
-                      <option key={status} value={status}>{status.charAt(0) + status.slice(1).toLowerCase()}</option>
-                    ))}
-                  </select>
-
-                  <select className="h-10 w-[180px] rounded-md border border-input bg-background px-3 text-sm" value={loanTypeFilter} onChange={(event) => setLoanTypeFilter(event.target.value)}>
-                    <option value="all">{tAdmin('allLoanTypes', 'All Loan Types')}</option>
-                    {loanTypeOptions.map((type) => (
-                      <option key={type} value={type}>{loanTypeLabel[type] || type}</option>
-                    ))}
-                  </select>
-
-                  <select className="h-10 w-[180px] rounded-md border border-input bg-background px-3 text-sm" value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
-                    <option value="all">{tAdmin('allBranches', 'All Branches')}</option>
-                    {branchOptions.map((branch) => (
-                      <option key={branch} value={branch}>{branch === 'UNASSIGNED' ? tAdmin('unassigned', 'Unassigned') : branch}</option>
-                    ))}
-                  </select>
-                </div>
-              </th>
-            </tr>
-
-              <tr>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('reference', 'Reference')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('applicant', 'Applicant')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('phone', 'Phone')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('membershipNo', 'Membership No')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('loanType', 'Loan Type')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('amount', 'Amount')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('status', 'Status')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('approvedDate', 'Approved Date')}</th>
-              <th className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-left text-xs font-semibold text-foreground border-b border-slate-200`}>{tAdmin('actions', 'Actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {approvedLoans.map((loan) => {
-                const fullName = [loan.applicant.firstName, loan.applicant.middleName, loan.applicant.lastName].filter((part) => Boolean(part && part.trim())).join(' ');
-                return (
-                  <tr key={loan.id} className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50/70 last:border-0" onClick={() => { void handleOpenEdit(loan); }}>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs font-medium text-primary break-words`}>{loan.referenceNo}</td>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs text-foreground break-words`}>{fullName}</td>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs text-muted-foreground break-words`}>{loan.applicant.phone}</td>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs text-muted-foreground break-words`}>{loan.membershipNo || tAdmin('emDash', '—')}</td>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs text-muted-foreground break-words`}>{loan.loanType ? (loanTypeLabel[loan.loanType] || loan.loanType) : tAdmin('emDash', '—')}</td>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs text-muted-foreground break-words`}>{loan.amount ? `${loan.amount.toLocaleString()} ETB` : tAdmin('emDash', '—')}</td>
-                    <td className={density === 'compact' ? 'p-1.5' : 'p-2'}><StatusBadge status={loan.status} /></td>
-                    <td className={`${density === 'compact' ? 'p-1.5' : 'p-2'} text-xs text-muted-foreground break-words`}>{new Date(loan.reviewedAt || loan.updatedAt || loan.submittedAt || Date.now()).toLocaleDateString()}</td>
-                    <td className={density === 'compact' ? 'p-1.5' : 'p-2'} onClick={(event) => event.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <Button variant="outline" size="sm" className="gap-1.5" title={tAdmin('editLoan', 'Edit Loan')} onClick={() => { void handleOpenEdit(loan); }}>
-                          <Pencil className="h-4 w-4 text-blue-700" />
-                          {tAdmin('edit', 'Edit')}
-                        </Button>
-                        {canDeleteLoans ? (
-                          <Button variant="ghost" size="sm" className="gap-1.5" title={tAdmin('deleteLoan', 'Delete Loan')} onClick={() => setPendingAction({ type: 'delete', loan })}>
-                            <Trash2 className="h-4 w-4 text-red-700" />
-                            {tAdmin('delete', 'Delete')}
-                          </Button>
-                        ) : (
-                          <Button variant="ghost" size="sm" className="gap-1.5" title={tAdmin('onlySuperAdminCanDelete', 'Only SUPER_ADMIN can delete')} disabled>
-                            <Trash2 className="h-4 w-4 text-red-300" />
-                            {tAdmin('delete', 'Delete')}
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {approvedLoans.length === 0 ? (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap text-sm">
+              <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
                 <tr>
-                  <td colSpan={9} className="p-6 text-center text-sm text-muted-foreground">{tAdmin('noApprovedLoansFound', 'No approved loans found.')}</td>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('reference', 'Reference')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('applicant', 'Applicant')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('phone', 'Phone')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('membershipNo', 'Membership No')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('loanType', 'Loan Type')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('branch', 'Branch')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('amount', 'Amount')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('status', 'Status')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('approvedDate', 'Approved Date')}</th>
+                  <th className="px-4 py-3 font-semibold text-center">{tAdmin('actions', 'Actions')}</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {approvedLoans.map((loan) => {
+                  const fullName = [loan.applicant.firstName, loan.applicant.fathersName, loan.applicant.grandfathersName].filter((part) => Boolean(part && part.trim())).join(' ');
+                  return (
+                    <tr key={loan.id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => { void handleOpenEdit(loan); }}>
+                      <td className="px-4 py-3 font-bold text-slate-900">{loan.referenceNo}</td>
+                      <td className="px-4 py-3 max-w-[150px] truncate">{fullName}</td>
+                      <td className="px-4 py-3 text-slate-500">{loan.applicant.phone}</td>
+                      <td className="px-4 py-3 text-slate-500">{loan.membershipNo || tAdmin('emDash', '—')}</td>
+                      <td className="px-4 py-3 text-slate-500">{loan.loanType || tAdmin('emDash', '—')}</td>
+                      <td className="px-4 py-3 text-slate-500 font-medium">{loan.branch?.name || tAdmin('emDash', '—')}</td>
+                      <td className="px-4 py-3 font-medium text-slate-700">{loan.amount ? `${loan.amount.toLocaleString()} ETB` : tAdmin('emDash', '—')}</td>
+                      <td className="px-4 py-3"><StatusBadge status={loan.status} /></td>
+                      <td className="px-4 py-3 text-slate-500">{new Date(loan.reviewedAt || loan.updatedAt || loan.submittedAt || Date.now()).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-center" onClick={(event) => event.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-6">
+                          <button 
+                            className="text-slate-400 hover:text-blue-600 transition-colors" 
+                            title={tAdmin('editLoan', 'Edit Loan')} 
+                            onClick={() => { void handleOpenEdit(loan); }}
+                          >
+                            <Pencil className="w-5 h-5" />
+                          </button>
+                          {canDeleteLoans ? (
+                            <button 
+                              className="text-slate-400 hover:text-red-600 transition-colors" 
+                              title={tAdmin('deleteLoan', 'Delete Loan')} 
+                              onClick={() => setDeleteTarget(loan)}
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          ) : (
+                            <button className="text-slate-200" title={tAdmin('onlySuperAdminCanDelete', 'Only SUPER_ADMIN can delete')} disabled>
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {approvedLoans.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-6 text-center text-sm text-slate-500">{tAdmin('noApprovedLoansFound', 'No approved loans found.')}</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 p-3 text-sm text-muted-foreground rounded-b-2xl">
-            <p>
+          {/* 2.4 Pagination Footer */}
+          <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between bg-slate-50/50 gap-4">
+            <span className="text-sm text-slate-500 font-medium">
               {tAdmin('showingRangeOfTotal', 'Showing {{start}}-{{end}} of {{total}}', {
                 start: applications.length === 0 ? 0 : (page - 1) * limit + 1,
                 end: Math.min(page * limit, total),
                 total,
               })}
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>{tAdmin('previous', 'Previous')}</Button>
-              <span>{tAdmin('pageOf', 'Page {{page}} / {{totalPages}}', { page, totalPages: Math.max(1, totalPages) })}</span>
-              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>{tAdmin('next', 'Next')}</Button>
+            </span>
+            <div className="flex gap-2 items-center">
+              <button 
+                className="px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-slate-200 text-sm font-bold transition-colors text-slate-700 bg-white shadow-sm"
+                disabled={page <= 1} 
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                {tAdmin('previous', 'Previous')}
+              </button>
+              <span className="text-sm font-bold text-slate-500 px-2">{page} / {Math.max(1, totalPages)}</span>
+              <button 
+                className="px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-slate-200 text-sm font-bold transition-colors text-slate-700 bg-white shadow-sm"
+                disabled={page >= totalPages} 
+                onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
+              >
+                {tAdmin('next', 'Next')}
+              </button>
             </div>
           </div>
         </div>
       ) : null}
-
-      <AlertDialog open={Boolean(pendingAction)} onOpenChange={(open) => { if (!open) setPendingAction(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingAction?.type === 'delete' ? tAdmin('deleteLoanApplication', 'Delete Loan Application') : tAdmin('deactivateLoan', 'Deactivate Loan')}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingAction?.type === 'delete'
-                ? tAdmin('confirmDeleteLoanApplication', 'You are about to permanently delete {{referenceNo}}. This cannot be undone.', {
-                  referenceNo: pendingAction.loan.referenceNo,
-                })
-                : tAdmin('confirmDeactivateLoan', 'You are about to deactivate {{referenceNo}}. This will move status back to APPROVED.', {
-                  referenceNo: pendingAction?.loan.referenceNo || '',
-                })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tAdmin('cancel', 'Cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { void runPendingAction(); }}>{tAdmin('confirm', 'Confirm')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </section>
+      <ConfirmDeleteModal
+        open={Boolean(deleteTarget)}
+        loading={deleteSubmitting}
+        title={`Delete ${deleteTarget?.referenceNo || 'Loan'}?`}
+        description="Are you sure you want to delete this loan application? This action cannot be undone."
+        onConfirm={() => void confirmDeleteLoan()}
+        onClose={() => setDeleteTarget(null)}
+      />
+    </div>
   );
 }
 

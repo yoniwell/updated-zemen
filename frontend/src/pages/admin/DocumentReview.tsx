@@ -28,8 +28,8 @@ type DocumentItem = {
     referenceNo: string;
     applicant: {
       firstName: string;
-      middleName?: string | null;
-      lastName: string;
+      fathersName?: string | null;
+      grandfathersName: string;
     };
   } | null;
   loanApplication?: {
@@ -37,8 +37,8 @@ type DocumentItem = {
     referenceNo: string;
     applicant: {
       firstName: string;
-      middleName?: string | null;
-      lastName: string;
+      fathersName?: string | null;
+      grandfathersName: string;
     };
   } | null;
 };
@@ -57,7 +57,7 @@ const categoryLabel = (category: string) =>
 const applicantName = (document: DocumentItem) => {
   const applicant = document.membershipApplication?.applicant || document.loanApplication?.applicant;
   if (!applicant) return '-';
-  return [applicant.firstName, applicant.middleName || null, applicant.lastName || null].filter((part) => Boolean(part && part.trim())).join(' ');
+  return [applicant.firstName, applicant.fathersName || null, applicant.grandfathersName || null].filter((part) => Boolean(part && part.trim())).join(' ');
 };
 
 const referenceNo = (document: DocumentItem) => document.membershipApplication?.referenceNo || document.loanApplication?.referenceNo || '-';
@@ -79,7 +79,7 @@ export default function DocumentReview() {
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (docTypeFilter !== 'all') params.set('category', docTypeFilter);
 
-      const response = await adminFetch<DocumentReviewResponse>(`/api/admin/documents/review?${params.toString()}`);
+      const response = await adminFetch<DocumentReviewResponse>(`/api/applications/documents/review?${params.toString()}`);
       setDocuments(response.documents);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tAdmin('failedLoadDocuments', 'Failed to load documents'));
@@ -129,7 +129,7 @@ export default function DocumentReview() {
 
     setActionLoading(true);
     try {
-      await adminFetch('/api/admin/documents/bulk-status', {
+      await adminFetch('/api/applications/documents/bulk-status', {
         method: 'PATCH',
         body: JSON.stringify({ documentIds: selected, status, reason }),
       });
@@ -149,10 +149,8 @@ export default function DocumentReview() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl text-foreground">{tAdmin('documentReview', 'Document Review')}</h1>
-          <p className="text-sm text-muted-foreground">{tAdmin('documentsCount', '{{count}} documents', { count: filtered.length })}</p>
         </div>
         <div className="flex items-center gap-2">
         {selected.length > 0 && (

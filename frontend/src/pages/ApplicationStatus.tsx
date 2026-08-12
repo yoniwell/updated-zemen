@@ -37,12 +37,7 @@ function statusTone(status: string) {
     };
   }
 
-  if (upper === 'PENDING_DOCUMENTS' || upper === 'PENDING_CLARIFICATION') {
-    return {
-      icon: FileClock,
-      className: 'text-amber-700 bg-amber-50 border-amber-200',
-    };
-  }
+
 
   return {
     icon: Clock3,

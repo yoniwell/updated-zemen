@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Navigate, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route, useLocation, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 
 import { LanguageProvider } from './context/LanguageContext';
@@ -34,9 +34,18 @@ import LoanQueue from './pages/admin/LoanQueue';
 import MembersList from './pages/admin/MembersList';
 import LoansList from './pages/admin/LoansList';
 import ApplicationDetail from './pages/admin/ApplicationDetail';
-import ContentManager from './pages/admin/ContentManager';
+import ServicesManager from './pages/admin/cms/ServicesManager';
+import SavingsManager from './pages/admin/cms/SavingsManager';
+import LoanProductsManager from './pages/admin/cms/LoanProductsManager';
+import NewsManager from './pages/admin/cms/NewsManager';
+import DownloadsManager from './pages/admin/cms/DownloadsManager';
+import FAQsManager from './pages/admin/cms/FAQsManager';
 
 import SettingsHome from './pages/admin/SettingsHome';
+import AdminSavingTypes from './pages/admin/AdminSavingTypes';
+import AdminLoanTypes from './pages/admin/AdminLoanTypes';
+import UserManagement from './pages/admin/UserManagement';
+import BranchManagementComponent from './components/admin/BranchManagementComponent';
 import AuditLog from './pages/admin/AuditLog';
 import { clearAdminSession, getAdminUser } from './lib/adminAuth';
 import { adminFetch } from './lib/adminApi';
@@ -197,8 +206,22 @@ function AppContent() {
             <Route path="document-review" element={<Navigate to="/admin/membership-queue" replace />} />
             <Route path="audit-log" element={<RequireAdminModule module="audit-log"><AuditLog /></RequireAdminModule>} />
             <Route path="applications/:type/:id" element={<RequireAdminModule module="dashboard"><ApplicationDetail /></RequireAdminModule>} />
-            <Route path="cms" element={<RequireAdminModule module="cms"><ContentManager /></RequireAdminModule>} />
-            <Route path="settings" element={<RequireAdminModule module="settings"><SettingsHome /></RequireAdminModule>} />
+            <Route path="cms" element={<RequireAdminModule module="cms"><Outlet /></RequireAdminModule>}>
+              <Route index element={<Navigate to="/admin/cms/services" replace />} />
+              <Route path="services" element={<ServicesManager />} />
+              <Route path="savings" element={<SavingsManager />} />
+              <Route path="loan-products" element={<LoanProductsManager />} />
+              <Route path="news" element={<NewsManager />} />
+              <Route path="downloads" element={<DownloadsManager />} />
+              <Route path="faqs" element={<FAQsManager />} />
+            </Route>
+            <Route path="settings" element={<RequireAdminModule module="settings"><Outlet /></RequireAdminModule>}>
+              <Route index element={<SettingsHome />} />
+              <Route path="user-management" element={<UserManagement />} />
+              <Route path="branches" element={<BranchManagementComponent />} />
+              <Route path="saving-types" element={<AdminSavingTypes />} />
+              <Route path="loan-types" element={<AdminLoanTypes />} />
+            </Route>
           </Route>
 
           <Route path="*" element={isAdminRoute ? <Navigate to="/admin/login" replace /> : <NotFound />} />

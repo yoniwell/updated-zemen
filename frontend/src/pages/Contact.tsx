@@ -148,19 +148,19 @@ export default function Contact() {
         if (namedContacts.length > 0) {
           setSupportLines(
             namedContacts.map((contact, index) => ({
-              name: contact.name?.trim() || defaultSupportLines[index]?.name || `Branch ${index + 1}`,
+              name: contact.name?.trim() || `Branch ${index + 1}`,
               number: contact.number.trim(),
             }))
           );
         } else if (legacyNumbers.length > 0) {
           setSupportLines(
             legacyNumbers.map((number, index) => ({
-              name: defaultSupportLines[index]?.name ?? `Branch ${index + 1}`,
+              name: `Branch ${index + 1}`,
               number,
             }))
           );
         } else {
-          setSupportLines(defaultSupportLines);
+          setSupportLines([]);
         }
       } catch {
         // Keep static fallback branch and phone values if CMS endpoint is unavailable.

@@ -34,13 +34,6 @@ interface ServiceCardProps {
 
 const Services: React.FC<ServicesProps> = ({ onNavigate }) => {
   const { tPublicUi } = usePublicUiI18n();
-  const fallbackServices = useMemo<ServiceCardProps[]>(() => [
-    { number: '01', icon: <PiggyBank size={36} />, title: tPublicUi('savings', 'Savings'), description: 'High-yield accounts with zero fees.', features: ['Zero Fees', 'Daily Interest', 'Instant Access'], cta: tPublicUi('learnMore', 'Learn More') },
-    { number: '02', icon: <HandCoins size={36} />, title: tPublicUi('loans', 'Loans'), description: 'Fair rates and fast-track approval.', features: ['Fast Approval', 'No Hidden Charges', 'Expert Advisory'], cta: tPublicUi('applyNow', 'Apply Now'), onCtaClick: () => onNavigate('loans') },
-    { number: '03', icon: <UserPlus size={36} />, title: tPublicUi('membership', 'Membership'), description: 'Join a community of owners.', features: ['Annual Dividends', 'Voting Rights', 'Events'], cta: tPublicUi('seeBenefits', 'See Benefits'), onCtaClick: () => onNavigate('membership') },
-    { number: '04', icon: <Smartphone size={36} />, title: tPublicUi('digital', 'Digital'), description: 'Modern banking at your fingertips.', features: ['Mobile App', 'SMS Alerts', 'Security'], cta: tPublicUi('goDigital', 'Go Digital') },
-  ], [onNavigate, tPublicUi]);
-
   const [cmsServices, setCmsServices] = useState<PublicService[]>([]);
 
   useEffect(() => {
@@ -61,7 +54,7 @@ const Services: React.FC<ServicesProps> = ({ onNavigate }) => {
   }, []);
 
   const renderedServices = useMemo<ServiceCardProps[]>(() => {
-    if (!cmsServices.length) return fallbackServices;
+    if (!cmsServices.length) return [];
     return cmsServices
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((item, index) => ({
@@ -73,7 +66,7 @@ const Services: React.FC<ServicesProps> = ({ onNavigate }) => {
         cta: item.ctaLabel || 'Learn More',
         onCtaClick: item.ctaPath ? () => window.location.assign(item.ctaPath as string) : undefined,
       }));
-  }, [cmsServices, fallbackServices]);
+  }, [cmsServices]);
 
   return (
     <div className="bg-white">

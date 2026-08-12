@@ -1,0 +1,45 @@
+name: Production Auto-Deploy to Contabo VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Contabo VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: SSH Remote Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            export PUPPETEER_SKIP_DOWNLOAD=true
+            cd /var/www/updated-zemen
+            git pull origin main
+
+            echo "=== Building Backend Services ==="
+            cd /var/www/updated-zemen/backend
+            PUPPETEER_SKIP_DOWNLOAD=true npm install
+            npx prisma generate
+            npx prisma db push
+            npm run build
+            pm2 reload zemen-backend || pm2 start dist/server.js --name "zemen-backend"
+            pm2 save
+
+            echo "=== Building Frontend Production Assets ==="
+            cd /var/www/updated-zemen/frontend
+            npm install
+            npm run build
+
+            echo "=== Reloading Nginx ==="
+            sudo systemctl reload nginx
+
+            echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY ==="

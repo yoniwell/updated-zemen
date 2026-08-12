@@ -22,16 +22,15 @@ interface AuditEvent {
     name: string;
     role: string;
     branch: { id: string; name: string; code: string } | null;
-  };
+  } | null;
 }
 
 interface AuditResponse {
-  events: AuditEvent[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-  };
+  logs: AuditEvent[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 interface AuditDashboardResponse {
@@ -65,7 +64,7 @@ export default function AuditLog() {
   const [entityFilter, setEntityFilter] = useState<'ALL' | string>('ALL');
   const [dashboard, setDashboard] = useState<AuditDashboardResponse | null>(null);
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
+  const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -77,11 +76,11 @@ export default function AuditLog() {
       if (actionFilter !== 'ALL') params.set('action', actionFilter);
       if (entityFilter !== 'ALL') params.set('entity', entityFilter);
 
-      const response = await adminFetch<AuditResponse>(`/api/admin/audit-logs?${params.toString()}`);
-      setEvents(response.events);
-      setTotal(response.pagination?.total ?? response.events.length);
+      const response = await adminFetch<AuditResponse>(`/api/audit?${params.toString()}`);
+      setEvents(response.logs || []);
+      setTotal(response.total ?? (response.logs ? response.logs.length : 0));
 
-      const dashboardResponse = await adminFetch<AuditDashboardResponse>('/api/admin/audit-logs/dashboard');
+      const dashboardResponse = await adminFetch<AuditDashboardResponse>('/api/audit/dashboard');
       setDashboard(dashboardResponse);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : tAdmin('failedToLoadAuditLogs'));
@@ -156,66 +155,42 @@ export default function AuditLog() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-2xl text-foreground">{tAdmin('auditLogHeading')}</h1>
-          <p className="text-sm text-muted-foreground">{tAdmin('auditLogSubheading')}</p>
-
-          <div className="mt-3 flex gap-8">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">{tAdmin('eventsLast24h')}</p>
-              <p className="text-2xl font-bold">{dashboard?.summary.total24h ?? '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">{tAdmin('permissionFailures')}</p>
-              <p className="text-2xl font-bold">{dashboard?.summary.permissionFailures ?? '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">{tAdmin('policyExceptions')}</p>
-              <p className="text-2xl font-bold">{dashboard?.summary.policyExceptions ?? '-'}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">{tAdmin('suspiciousIps')}</p>
-              <p className="text-2xl font-bold">{dashboard?.summary.suspiciousIpCount ?? '-'}</p>
-            </div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          <div className="relative min-w-[220px] max-w-[300px] flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-9" placeholder={tAdmin('searchAuditPlaceholder', 'Search user, action, target, or details...')} value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
+
+          <Select value={actionFilter} onValueChange={setActionFilter}>
+            <SelectTrigger className="w-[220px]"><SelectValue placeholder={tAdmin('eventType', 'Event type')} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">{tAdmin('allActions')}</SelectItem>
+              <SelectItem value="USER_MANAGEMENT">{tAdmin('userManagementEvents')}</SelectItem>
+              {uniqueActions.map((action) => (
+                <SelectItem key={action} value={action}>{action}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={entityFilter} onValueChange={setEntityFilter}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder={tAdmin('affectedArea', 'Affected area')} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">{tAdmin('allEntities')}</SelectItem>
+              {uniqueEntities.map((entity) => (
+                <SelectItem key={entity} value={entity}>{entity}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => void loadAudit()} disabled={loading}>{tAdmin('refresh')}</Button>
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="mr-1 h-4 w-4" /> {tAdmin('export')}</Button>
         </div>
       </div>
 
-      <div className="max-w-full overflow-x-auto rounded-2xl bg-white shadow-sm">
-        <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="relative min-w-[220px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9" placeholder={tAdmin('searchAuditPlaceholder', 'Search user, action, target, or details...')} value={search} onChange={(event) => setSearch(event.target.value)} />
-          </div>
-
-          <div className="mt-3 flex gap-3">
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder={tAdmin('eventType', 'Event type')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">{tAdmin('allActions')}</SelectItem>
-                <SelectItem value="USER_MANAGEMENT">{tAdmin('userManagementEvents')}</SelectItem>
-                {uniqueActions.map((action) => (
-                  <SelectItem key={action} value={action}>{action}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={entityFilter} onValueChange={setEntityFilter}>
-              <SelectTrigger className="w-[200px]"><SelectValue placeholder={tAdmin('affectedArea', 'Affected area')} /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">{tAdmin('allEntities')}</SelectItem>
-                {uniqueEntities.map((entity) => (
-                  <SelectItem key={entity} value={entity}>{entity}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <div className="max-w-full overflow-x-auto rounded-2xl bg-white shadow-sm border border-slate-100">
         <table className="min-w-[860px] w-full table-fixed text-xs [&_td]:whitespace-normal [&_td]:break-words">
           <thead>
             <tr>
@@ -235,8 +210,8 @@ export default function AuditLog() {
               filtered.map((event) => (
                 <tr key={event.id} className="border-b transition-colors last:border-0 hover:bg-muted/30">
                   <td className="p-2">
-                    <p className="text-xs font-semibold text-foreground">{event.user.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{event.user.role}</p>
+                    <p className="text-xs font-semibold text-foreground">{event.user?.name || 'System'}</p>
+                    <p className="text-[10px] text-muted-foreground">{event.user?.role || 'System'}</p>
                   </td>
                   <td className="p-2 text-xs font-semibold text-foreground">{event.action}</td>
                   <td className="p-2 text-xs text-muted-foreground">{event.targetType}</td>
@@ -251,14 +226,7 @@ export default function AuditLog() {
       <div className="flex items-center justify-between border-t border-slate-100 p-3 text-xs text-muted-foreground rounded-b-2xl mt-3">
         <p>{tAdmin('pageOf', 'Page {{page}} / {{totalPages}}', { page, totalPages })} — {tAdmin('total', 'Total')}: {total}</p>
         <div className="flex items-center gap-2">
-          <Select value={String(limit)} onValueChange={(value) => { setLimit(Number(value)); setPage(1); }}>
-            <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="10">10 / page</SelectItem>
-              <SelectItem value="25">25 / page</SelectItem>
-              <SelectItem value="50">50 / page</SelectItem>
-            </SelectContent>
-          </Select>
+
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>{tAdmin('previous', 'Previous')}</Button>
           <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>{tAdmin('next', 'Next')}</Button>
         </div>

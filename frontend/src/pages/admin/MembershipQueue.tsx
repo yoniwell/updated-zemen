@@ -21,8 +21,8 @@ type MembershipQueueApplication = {
   applicantType: string;
   applicant: {
     firstName: string;
-    middleName?: string | null;
-    lastName?: string | null;
+    fathersName?: string | null;
+    grandfathersName?: string | null;
     phone: string;
   };
   branch?: {
@@ -50,8 +50,8 @@ type MembershipQueueApplication = {
 };
 
 const formatApplicantName = (applicant: MembershipQueueApplication['applicant']): string => {
-  const middle = applicant.middleName || null;
-  const last = applicant.lastName || null;
+  const middle = applicant.fathersName || null;
+  const last = applicant.grandfathersName || null;
   return [applicant.firstName, middle, last].filter((part) => Boolean(part && part.trim())).join(' ');
 };
 
@@ -76,7 +76,7 @@ const labelizeStatus = (status: string) =>
 export default function MembershipQueue() {
   const { tAdmin } = useAdminI18n();
   const navigate = useNavigate();
-  const { branchNames } = useAdminBranches();
+  const { branches } = useAdminBranches();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -105,14 +105,21 @@ export default function MembershipQueue() {
           sortOrder,
         });
         if (search.trim()) params.set('search', search.trim());
-        if (statusFilter !== 'all') params.set('status', statusFilter);
+        
+        if (statusFilter !== 'all') {
+          params.set('status', statusFilter);
+        } else {
+          // Default queue statuses
+          params.set('status', 'SUBMITTED,UNDER_REVIEW');
+        }
+
         if (branchFilter !== 'all') params.set('branchId', branchFilter);
         if (officerFilter !== 'all' && officerFilter !== '—') params.set('assignedToId', officerFilter);
 
-        const response = await adminFetch<MembershipQueueResponse>(`/api/admin/queues/membership?${params.toString()}`);
-        setApplications(response.applications);
+        const response = await adminFetch<MembershipQueueResponse>(`/api/membership?${params.toString()}`);
+        setApplications(response.applications || []);
         const pagination = response.pagination;
-        const nextTotal = pagination?.total ?? response.total ?? response.applications.length;
+        const nextTotal = pagination?.total ?? response.total ?? (response.applications || []).length;
         const nextTotalPages = pagination?.totalPages ?? Math.max(1, Math.ceil(nextTotal / limit));
         setTotal(nextTotal);
         setTotalPages(nextTotalPages);
@@ -126,15 +133,7 @@ export default function MembershipQueue() {
     void loadQueue();
   }, [page, limit, sortBy, sortOrder, search, statusFilter, branchFilter, officerFilter, reloadSeq, tAdmin]);
 
-  const branchOptions = useMemo(() => {
-    const names = new Set<string>(branchNames);
-    applications.forEach((application) => {
-      if (application.branch?.name) {
-        names.add(application.branch.name);
-      }
-    });
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [applications, branchNames]);
+
 
   const filtered = useMemo(() => applications, [applications]);
 
@@ -197,108 +196,138 @@ export default function MembershipQueue() {
   }
 
   return (
-    <div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto px-4 py-4">
+      {/* 2.1 Page Header & Primary Actions */}
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{tAdmin('membershipApplications', 'Membership Applications')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{tAdmin('applicationsCount', '{{count}} applications', { count: total })}</p>
+          <h1 className="text-xl font-bold text-slate-900">{tAdmin('membershipApplications', 'Membership Applications')}</h1>
+          <p className="text-xs text-slate-500 mt-0.5">{tAdmin('applicationsCount', '{{count}} applications', { count: total })}</p>
         </div>
-        <button className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground" onClick={exportCsv}>
-          <Download className="h-3.5 w-3.5" /> {tAdmin('exportCsv', 'Export CSV')}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportCsv} className="bg-white text-slate-700 border px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-50 transition-colors text-sm font-bold shadow-sm">
+            <Download className="w-4 h-4" /> {tAdmin('exportCsv', 'Export CSV')}
+          </button>
+        </div>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white px-3 shadow-sm">
-        <table className="w-full text-sm text-left border-collapse">
-          <thead>
-            <tr>
-              <th colSpan={8} className="p-4 font-normal">
-                <div className="flex flex-wrap gap-3 text-sm font-normal">
-                  <div className="relative min-w-[200px] flex-1">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
-                      placeholder={tAdmin('searchByNamePhoneOrReference', 'Search by name, phone, or reference...')}
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                    />
-                  </div>
+      {/* 2.2 Filter & Search Bar */}
+      <div className="mb-4 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-2.5 bg-white shadow-sm border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow text-sm"
+            placeholder={tAdmin('searchByNamePhoneOrReference', 'Search by name, phone, or reference...')}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
 
-                  <select className="h-9 w-[160px] rounded-md border border-input bg-background px-3 text-sm" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                    <option value="all">{tAdmin('allStatuses', 'All Statuses')}</option>
-                    {MEMBERSHIP_QUEUE_STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>{labelizeStatus(status)}</option>
-                    ))}
-                  </select>
+        <select 
+          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
+          value={statusFilter} 
+          onChange={(event) => setStatusFilter(event.target.value)}
+        >
+          <option value="all">{tAdmin('allStatuses', 'All Statuses')}</option>
+          {MEMBERSHIP_QUEUE_STATUS_OPTIONS.map((status) => (
+            <option key={status} value={status}>{labelizeStatus(status)}</option>
+          ))}
+        </select>
 
-                  <select className="h-9 w-[140px] rounded-md border border-input bg-background px-3 text-sm" value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)}>
-                    <option value="all">{tAdmin('allBranches', 'All Branches')}</option>
-                    {branchOptions.map((branch) => (
-                      <option key={branch} value={branch}>{branch}</option>
-                    ))}
-                  </select>
-                </div>
-              </th>
-            </tr>
+        <select 
+          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
+          value={branchFilter} 
+          onChange={(event) => setBranchFilter(event.target.value)}
+        >
+          <option value="all">{tAdmin('allBranches', 'All Branches')}</option>
+          {branches.map((branch) => (
+            <option key={branch.id} value={branch.id}>{branch.name}</option>
+          ))}
+        </select>
+      </div>
 
-            <tr>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('reference', 'Reference')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('applicant', 'Applicant')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('branch', 'Branch')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('status', 'Status')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('date', 'Date')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('missingDocs', 'Missing Docs')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('updated', 'Updated')}</th>
-              <th className="p-3 text-left text-xs font-semibold text-slate-700 border-b border-slate-200">{tAdmin('actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((application) => {
-              const applicantName = formatApplicantName(application.applicant);
-              const branchName = application.branch?.name || '—';
-              const missingDocs = application.documents.filter((doc) => doc.status !== 'VERIFIED').length;
-              const displayDate = application.submittedAt || application.updatedAt;
-              
-              
-              return (
-              <tr key={application.id} className="cursor-pointer border-b border-slate-100 transition-colors hover:bg-slate-50/80 last:border-0 px-3" onClick={() => navigate(`/admin/applications/membership/${application.id}`)}>
-                <td className="p-3 align-middle text-xs font-medium text-primary break-words">{application.referenceNo}</td>
-                <td className="p-3 align-middle">
-                  <div className="text-xs font-medium leading-tight text-foreground break-words">{applicantName}</div>
-                  <div className="text-[11px] leading-tight text-muted-foreground break-words">{application.applicant.phone}</div>
-                </td>
-                <td className="p-3 align-middle text-xs text-muted-foreground break-words">{branchName}</td>
-                <td className="p-3 align-middle"><StatusBadge status={application.status} /></td>
-                <td className="p-3 align-middle text-xs text-muted-foreground break-words">{new Date(displayDate).toLocaleDateString()}</td>
-                <td className="p-3 align-middle">
-                  {missingDocs > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-warning">
-                      <AlertTriangle className="h-3 w-3" />
-                      {missingDocs}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-success">✓</span>
-                  )}
-                </td>
-                <td className="p-3 align-middle text-xs text-muted-foreground break-words">{new Date(application.updatedAt).toLocaleString()}</td>
-                <td className="p-3 align-middle" onClick={(event) => event.stopPropagation()}>
-                  <Button asChild variant="outline" size="sm" className="gap-1.5" title={tAdmin('viewDetails', 'View Details')}>
-                    <Link to={`/admin/applications/membership/${application.id}`}>
-                      <Info className="h-4 w-4" />
+      {/* 2.3 Data Table */}
+      <div className="bg-white rounded-xl shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left whitespace-nowrap text-sm">
+            <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
+              <tr>
+                <th className="px-4 py-3 font-semibold">{tAdmin('reference', 'Reference')}</th>
+                <th className="px-4 py-3 font-semibold">{tAdmin('applicant', 'Applicant')}</th>
+                <th className="px-4 py-3 font-semibold">{tAdmin('branch', 'Branch')}</th>
+                <th className="px-4 py-3 font-semibold">{tAdmin('status', 'Status')}</th>
+                <th className="px-4 py-3 font-semibold">{tAdmin('date', 'Date')}</th>
+                <th className="px-4 py-3 font-semibold text-center">{tAdmin('missingDocs', 'Missing Docs')}</th>
+                <th className="px-4 py-3 font-semibold">{tAdmin('updated', 'Updated')}</th>
+                <th className="px-4 py-3 font-semibold text-center">{tAdmin('actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((application) => {
+                const applicantName = formatApplicantName(application.applicant);
+                const branchName = application.branch?.name || '—';
+                const documents = application.documents || [];
+                const missingDocs = documents.filter((doc) => doc.status !== 'VERIFIED').length;
+                const displayDate = application.submittedAt || application.updatedAt;
+                
+                return (
+                <tr key={application.id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => navigate(`/admin/applications/membership/${application.id}`)}>
+                  <td className="px-4 py-3 font-bold text-slate-900">{application.referenceNo}</td>
+                  <td className="px-4 py-3 max-w-[150px] truncate">
+                    <div className="font-medium">{applicantName}</div>
+                    <div className="text-xs text-slate-500">{application.applicant.phone}</div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500">{branchName}</td>
+                  <td className="px-4 py-3"><StatusBadge status={application.status} /></td>
+                  <td className="px-4 py-3 text-slate-500">{new Date(displayDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-center">
+                    {missingDocs > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs text-orange-600 font-bold bg-orange-100 px-2 py-0.5 rounded-full">
+                        <AlertTriangle className="h-3 w-3" />
+                        {missingDocs}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-green-600 font-bold bg-green-100 px-2 py-0.5 rounded-full">✓ OK</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 text-xs">{new Date(application.updatedAt).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center" onClick={(event) => event.stopPropagation()}>
+                    <Link to={`/admin/applications/membership/${application.id}`} className="px-3 py-1.5 border rounded-lg hover:bg-slate-50 text-slate-700 font-bold transition-colors inline-flex items-center gap-1.5 shadow-sm text-xs">
+                      <Info className="h-3.5 w-3.5" />
                       {tAdmin('details', 'Details')}
                     </Link>
-                  </Button>
-                </td>
-              </tr>
-            );})}
-          </tbody>
-        </table>
+                  </td>
+                </tr>
+              );})}
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-6 text-center text-sm text-slate-500">No applications found.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
 
-        <div className="flex items-center justify-between border-t border-slate-100 p-3 text-xs text-muted-foreground rounded-b-2xl">
-          <p>{tAdmin('pageOf', 'Page {{page}} / {{totalPages}}', { page, totalPages: Math.max(1, totalPages) })}</p>
-          <div className="flex items-center gap-2">
-            <button className="h-8 rounded-md border border-input bg-background px-3" disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}>{tAdmin('previous', 'Previous')}</button>
-            <button className="h-8 rounded-md border border-input bg-background px-3" disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}>{tAdmin('next', 'Next')}</button>
+        {/* 2.4 Pagination Footer */}
+        <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between bg-slate-50/50 gap-4">
+          <span className="text-sm text-slate-500 font-medium">
+            {tAdmin('pageOf', 'Page {{page}} / {{totalPages}}', { page, totalPages: Math.max(1, totalPages) })}
+          </span>
+          <div className="flex gap-2">
+            <button 
+              className="px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-slate-200 text-sm font-bold transition-colors text-slate-700 bg-white shadow-sm"
+              disabled={page <= 1} 
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              {tAdmin('previous', 'Previous')}
+            </button>
+            <button 
+              className="px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-slate-200 text-sm font-bold transition-colors text-slate-700 bg-white shadow-sm"
+              disabled={page >= totalPages} 
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              {tAdmin('next', 'Next')}
+            </button>
           </div>
         </div>
       </div>

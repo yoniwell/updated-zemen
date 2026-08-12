@@ -24,98 +24,7 @@ interface LoansProps {
   onNavigate: (page: Page) => void;
 }
 
-const fallbackLoanProducts = [
-  {
-    icon: <User className="h-8 w-8 text-blue-600" />,
-    titleKey: 'loansFallbackPersonalTitle',
-    titleFallback: 'Personal Development Loan',
-    purposeKey: 'loansFallbackPersonalPurpose',
-    purposeFallback: 'Supports education, household improvements, health needs, or planned personal expenses.',
-    targetKey: 'loansFallbackPersonalTarget',
-    targetFallback: 'Active members with savings history and predictable income.',
-    type: 'PERSONAL',
-    requirements: [
-      { key: 'loansReqValidId', fallback: 'Valid ID' },
-      { key: 'loansReqSavingsStatement', fallback: 'Savings Statement' },
-      { key: 'loansReqProofIncome', fallback: 'Proof of Income' },
-    ],
-  },
-  {
-    icon: <Briefcase className="h-8 w-8 text-blue-600" />,
-    titleKey: 'loansFallbackBusinessTitle',
-    titleFallback: 'Business and Trade Loan',
-    purposeKey: 'loansFallbackBusinessPurpose',
-    purposeFallback: 'Supports business expansion, working capital, trading activity, and income-generating operations.',
-    targetKey: 'loansFallbackBusinessTarget',
-    targetFallback: 'Traders, entrepreneurs, and small business operators.',
-    type: 'BUSINESS',
-    requirements: [
-      { key: 'loansReqBusinessLicense', fallback: 'Business License' },
-      { key: 'loansReqCashFlowRecords', fallback: 'Cash Flow Records' },
-      { key: 'loansReqMembership6Months', fallback: '6+ Months Membership' },
-    ],
-  },
-  {
-    icon: <FileText className="h-8 w-8 text-blue-600" />,
-    titleKey: 'loansFallbackSalaryTitle',
-    titleFallback: 'Salary-Backed Loan',
-    purposeKey: 'loansFallbackSalaryPurpose',
-    purposeFallback: 'Structured borrowing against verifiable salary income and predictable repayment ability.',
-    targetKey: 'loansFallbackSalaryTarget',
-    targetFallback: 'Government, private-sector, NGO, and institution-based employees.',
-    type: 'DEVELOPMENT',
-    requirements: [
-      { key: 'loansReqEmploymentLetter', fallback: 'Employment Letter' },
-      { key: 'loansReqLast3Payslips', fallback: 'Last 3 Pay Slips' },
-      { key: 'loansReqSalaryAgreement', fallback: 'Salary Agreement' },
-    ],
-  },
-  {
-    icon: <HeartPulse className="h-8 w-8 text-blue-600" />,
-    titleKey: 'loansFallbackEmergencyTitle',
-    titleFallback: 'Emergency Support Loan',
-    purposeKey: 'loansFallbackEmergencyPurpose',
-    purposeFallback: 'Smaller and faster-response financing for urgent but essential financial needs.',
-    targetKey: 'loansFallbackEmergencyTarget',
-    targetFallback: 'Active members in good standing with a verifiable urgent need.',
-    type: 'EMERGENCY',
-    requirements: [
-      { key: 'loansReqProofEmergency', fallback: 'Proof of Emergency' },
-      { key: 'loansReqGuarantorForm', fallback: 'Guarantor Form' },
-      { key: 'loansReqActiveAccount', fallback: 'Active Account' },
-    ],
-  },
-  {
-    icon: <Settings className="h-8 w-8 text-blue-600" />,
-    titleKey: 'loansFallbackAssetTitle',
-    titleFallback: 'Asset and Equipment Loan',
-    purposeKey: 'loansFallbackAssetPurpose',
-    purposeFallback: 'Supports acquisition of productive tools, machinery, or other income-generating assets.',
-    targetKey: 'loansFallbackAssetTarget',
-    targetFallback: 'Members investing in productive assets or business tools.',
-    type: 'ASSET',
-    requirements: [
-      { key: 'loansReqProformaInvoice', fallback: 'Proforma Invoice' },
-      { key: 'loansReqOwnershipDocs', fallback: 'Ownership Docs' },
-      { key: 'loansReqAssetInsurance', fallback: 'Asset Insurance' },
-    ],
-  },
-  {
-    icon: <Users className="h-8 w-8 text-blue-600" />,
-    titleKey: 'loansFallbackGroupTitle',
-    titleFallback: 'Group Development Loan',
-    purposeKey: 'loansFallbackGroupPurpose',
-    purposeFallback: 'Supports organized group-based initiatives where collective financing is permitted.',
-    targetKey: 'loansFallbackGroupTarget',
-    targetFallback: 'Recognized group initiatives with an accountability structure.',
-    type: 'GROUP',
-    requirements: [
-      { key: 'loansReqGroupBylaws', fallback: 'Group Bylaws' },
-      { key: 'loansReqMeetingMinutes', fallback: 'Meeting Minutes' },
-      { key: 'loansReqCollectiveGuarantee', fallback: 'Collective Guarantee' },
-    ],
-  },
-];
+
 
 const inferLoanType = (name: string): string => {
   const value = name.toLowerCase();
@@ -156,14 +65,7 @@ export default function Loans({ onNavigate }: LoansProps) {
 
   const loanProducts = useMemo(() => {
     if (!cmsLoanProducts.length) {
-      return fallbackLoanProducts.map((loan) => ({
-        icon: loan.icon,
-        title: tPublic(loan.titleKey, loan.titleFallback),
-        purpose: tPublic(loan.purposeKey, loan.purposeFallback),
-        target: tPublic(loan.targetKey, loan.targetFallback),
-        type: loan.type,
-        requirements: loan.requirements.map((req) => tPublic(req.key, req.fallback)),
-      }));
+      return [];
     }
     return cmsLoanProducts
       .sort((a, b) => a.sortOrder - b.sortOrder)

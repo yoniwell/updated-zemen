@@ -1,19 +1,15 @@
-import { ChevronDown, Plus, RefreshCcw, Search } from 'lucide-react';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Plus, RefreshCcw, Search, Pencil, Trash2, KeyRound, ShieldAlert } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { adminFetch } from '@/lib/adminApi';
 import { toastApiError } from '@/lib/apiToast';
 import { ROLE_LABELS, roleRequiresBranch, type AdminRole, ADMIN_ROLE_VALUES } from '@/lib/adminRbac';
+import { getAdminUser } from '@/lib/adminAuth';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
+
 import StatusBadge from '@/components/admin/StatusBadge';
 import RoleChip from '@/components/admin/RoleChip';
+import ConfirmDeleteModal from '@/components/admin/ConfirmDeleteModal';
 import { formatDateTime as formatLocaleDateTime } from '@/lib/locale';
 import { useAdminI18n } from '@/lib/uiI18n';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -36,16 +32,19 @@ interface AdminUser {
   branchId: string | null;
   branch: Branch | null;
   isActive: boolean;
-  emailVerified: boolean;
-  emailVerifiedAt: string | null;
+
   lastLogin: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 interface RoleImpactPreview {
-  impacts: Array<{ level: 'info' | 'warning' | 'error'; code: string; message: string }>;
-  canSave: boolean;
+  impacts?: Array<{ level: 'info' | 'warning' | 'error'; code: string; message: string }>;
+  canSave?: boolean;
+  role?: string;
+  added?: string[];
+  removed?: string[];
+  unchanged?: string[];
 }
 
 interface RoleAccess {
@@ -68,7 +67,7 @@ const defaultCreateState: UserFormState = {
   name: '',
   email: '',
   password: '',
-  role: 'MEMBERSHIP_OFFICER',
+  role: 'OFFICER',
   branchId: '',
   isActive: true,
 };
@@ -84,6 +83,7 @@ const toStatusLabel = (isActive: boolean): 'Active' | 'Inactive' => (isActive ? 
 
 export default function UserManagement() {
   const { tAdmin } = useAdminI18n();
+  const user = getAdminUser();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [ ,setRoleAccess] = useState<RoleAccess[]>([]);
@@ -93,7 +93,7 @@ export default function UserManagement() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [branchFilter, setBranchFilter] = useState<'ALL' | string>('ALL');
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [sortBy] = useState<'createdAt' | 'name' | 'email' | 'role' | 'lastLogin'>('createdAt');
   const [sortOrder] = useState<'asc' | 'desc'>('desc');
@@ -113,20 +113,10 @@ export default function UserManagement() {
   const [resetPassword, setResetPassword] = useState('');
   const [resetSubmitting, setResetSubmitting] = useState(false);
 
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [bulkAction, setBulkAction] = useState<'NONE' | 'ACTIVATE' | 'DEACTIVATE' | 'ASSIGN_BRANCH'>('NONE');
-  const [bulkBranchId, setBulkBranchId] = useState<string>('');
-  const [bulkSubmitting, setBulkSubmitting] = useState(false);
 
-  const [deactivationTarget, setDeactivationTarget] = useState<AdminUser | null>(null);
-  const [deactivationReason, setDeactivationReason] = useState('');
-  const [deactivateSubmitting, setDeactivateSubmitting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
-  const searchQueryRef = useRef(searchQuery);
-  const roleFilterRef = useRef(roleFilter);
-  const statusFilterRef = useRef(statusFilter);
-  const branchFilterRef = useRef(branchFilter);
-  const pageRef = useRef(page);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -138,39 +128,27 @@ export default function UserManagement() {
         sortOrder,
       });
 
-      if (searchQueryRef.current.trim()) userParams.set('search', searchQueryRef.current.trim());
-      if (roleFilterRef.current !== 'ALL') userParams.set('role', roleFilterRef.current);
-      if (statusFilterRef.current === 'ACTIVE') userParams.set('status', 'active');
-      if (statusFilterRef.current === 'INACTIVE') userParams.set('status', 'inactive');
-      if (branchFilterRef.current && branchFilterRef.current !== 'ALL') userParams.set('branch', branchFilterRef.current);
+      if (searchQuery.trim()) userParams.set('search', searchQuery.trim());
+      if (roleFilter !== 'ALL') userParams.set('role', roleFilter);
+      if (statusFilter === 'ACTIVE') userParams.set('isActive', 'true');
+      if (statusFilter === 'INACTIVE') userParams.set('isActive', 'false');
+      if (branchFilter && branchFilter !== 'ALL') userParams.set('branch', branchFilter);
 
-      const [usersResponse, branchesResponse, accessResponse] = await Promise.all([
-        adminFetch<{ users: AdminUser[]; pagination: { total: number; page: number; limit: number } }>(`/api/admin/settings/users?${userParams.toString()}`),
-        adminFetch<{ branches: Branch[] }>('/api/admin/settings/branches'),
-        adminFetch<{ roles: RoleAccess[] }>(`/api/admin/settings/access-control`),
+      const [usersResponse, branchesResponse] = await Promise.all([
+        adminFetch<{ users: AdminUser[]; total: number; page: number; limit: number }>(`/api/users?${userParams.toString()}`),
+        adminFetch<{ branches: Branch[] }>('/api/settings/branches'),
       ]);
 
       setUsers(usersResponse.users);
-      setTotal(usersResponse.pagination.total);
+      setTotal(usersResponse.total);
       setBranches(branchesResponse.branches);
-      setRoleAccess(accessResponse.roles);
+      setRoleAccess([]);
     } catch (error) {
       toastApiError(error, tAdmin('failedToLoadUserManagementData', 'Failed to load user management data'));
     } finally {
       setLoading(false);
     }
-  }, [page, limit, sortBy, sortOrder, tAdmin,setRoleAccess]);
-
-  useEffect(() => {
-    searchQueryRef.current = searchQuery;
-    roleFilterRef.current = roleFilter;
-    statusFilterRef.current = statusFilter;
-    branchFilterRef.current = branchFilter;
-  }, [searchQuery, roleFilter, statusFilter, branchFilter]);
-
-  useEffect(() => {
-    pageRef.current = page;
-  }, [page]);
+  }, [page, limit, sortBy, sortOrder, searchQuery, roleFilter, statusFilter, branchFilter, tAdmin, setRoleAccess]);
 
   useEffect(() => {
     void loadData();
@@ -193,7 +171,7 @@ export default function UserManagement() {
 
     setCreateSubmitting(true);
     try {
-      await adminFetch<{ user: AdminUser }>('/api/admin/settings/users', {
+      await adminFetch<{ user: AdminUser }>('/api/users', {
         method: 'POST',
         body: JSON.stringify({
           name: createForm.name.trim(),
@@ -237,7 +215,7 @@ export default function UserManagement() {
 
     setRoleImpactLoading(true);
     try {
-      const response = await adminFetch<RoleImpactPreview>(`/api/admin/settings/users/${editingUser.id}/role-impact-preview`, {
+      const response = await adminFetch<RoleImpactPreview>(`/api/users/${editingUser.id}/role-impact-preview`, {
         method: 'POST',
         body: JSON.stringify({
           role: nextState.role,
@@ -271,14 +249,14 @@ export default function UserManagement() {
     }
 
     const preview = await loadRoleImpactPreview();
-    if (preview && !preview.canSave) {
+    if (preview && preview.canSave === false) {
       toast.error(tAdmin('resolveRoleImpactBlockers', 'Resolve role impact blockers before saving this user'));
       return;
     }
 
     setEditSubmitting(true);
     try {
-      const response = await adminFetch<{ user: AdminUser }>(`/api/admin/settings/users/${editingUser.id}`, {
+      const response = await adminFetch<{ user: AdminUser }>(`/api/users/${editingUser.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           name: editForm.name.trim(),
@@ -301,30 +279,23 @@ export default function UserManagement() {
     }
   };
 
-  const confirmDeactivateUser = async () => {
-    if (!deactivationTarget) {
+  const confirmDeleteUser = async () => {
+    if (!deleteTarget) {
       return;
     }
 
-    if (deactivationReason.trim().length < 5) {
-      toast.error(tAdmin('reasonAtLeastFiveChars', 'Reason must be at least 5 characters'));
-      return;
-    }
-
-    setDeactivateSubmitting(true);
+    setDeleteSubmitting(true);
     try {
-      await adminFetch<{ success: boolean }>(`/api/admin/settings/users/${deactivationTarget.id}`, {
+      await adminFetch<{ success: boolean }>(`/api/users/${deleteTarget.id}`, {
         method: 'DELETE',
-        body: JSON.stringify({ reason: deactivationReason.trim() }),
       });
-      toast.success(`${deactivationTarget.name} ${tAdmin('deactivated', 'deactivated')}`);
-      setDeactivationTarget(null);
-      setDeactivationReason('');
+      toast.success(`${deleteTarget.name} ${tAdmin('deleted', 'deleted')}`);
+      setDeleteTarget(null);
       await loadData();
     } catch (error) {
-      toastApiError(error, tAdmin('failedToDeactivateUser', 'Failed to deactivate user'));
+      toastApiError(error, tAdmin('failedToDeleteUser', 'Failed to delete user'));
     } finally {
-      setDeactivateSubmitting(false);
+      setDeleteSubmitting(false);
     }
   };
 
@@ -340,7 +311,7 @@ export default function UserManagement() {
 
     setResetSubmitting(true);
     try {
-      await adminFetch<{ success: boolean }>(`/api/admin/settings/users/${resetTarget.id}/password`, {
+      await adminFetch<{ success: boolean }>(`/api/users/${resetTarget.id}/password`, {
         method: 'PATCH',
         body: JSON.stringify({ password: resetPassword }),
       });
@@ -357,71 +328,18 @@ export default function UserManagement() {
   const handleInviteUser = async (user: AdminUser) => {
     try {
       const response = await adminFetch<{ success: boolean; inviteUrl: string; verificationUrl: string }>(
-        `/api/admin/settings/users/${user.id}/invite`,
+        `/api/users/${user.id}/invite`,
         { method: 'POST' }
       );
-      await navigator.clipboard.writeText(`${response.inviteUrl}\n${response.verificationUrl}`);
-      toast.success(`${tAdmin('inviteLinksCopiedFor', 'Invite and verification links copied for')} ${user.name}`);
-    } catch (error) {
-      toastApiError(error, tAdmin('failedToCreateInvitation', 'Failed to create invitation'));
-    }
-  };
-
-  const handleToggleUserSelection = (userId: string, selected: boolean) => {
-    setSelectedUserIds(prev => {
-      if (selected) {
-        return prev.includes(userId) ? prev : [...prev, userId];
+      toast.success(`${tAdmin('invitationSentTo', 'Invitation sent to')} ${user.email}`);
+      if (response.inviteUrl) {
+        console.log('Invite link:', response.inviteUrl);
       }
-      return prev.filter(id => id !== userId);
-    });
-  };
-
-  const allUsersSelected = filteredUsers.length > 0 && filteredUsers.every(user => selectedUserIds.includes(user.id));
-
-  const handleBulkAction = async () => {
-    if (bulkAction === 'NONE') {
-      toast.error(tAdmin('selectBulkActionFirst', 'Select a bulk action first'));
-      return;
-    }
-
-    if (selectedUserIds.length === 0) {
-      toast.error(tAdmin('selectAtLeastOneUser', 'Select at least one user'));
-      return;
-    }
-
-    if (bulkAction === 'ASSIGN_BRANCH' && !bulkBranchId) {
-      toast.error(tAdmin('selectBranchForReassignment', 'Select a branch for reassignment'));
-      return;
-    }
-
-    setBulkSubmitting(true);
-    try {
-      const payload: {
-        action: 'ACTIVATE' | 'DEACTIVATE' | 'ASSIGN_BRANCH';
-        userIds: string[];
-        branchId?: string | null;
-        reason?: string;
-      } = { action: bulkAction, userIds: selectedUserIds };
-
-      if (bulkAction === 'ASSIGN_BRANCH') {
-        payload.branchId = bulkBranchId;
-      }
-
-      const response = await adminFetch<{ success: boolean; affectedCount: number }>('/api/admin/settings/users/bulk', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      toast.success(`${tAdmin('bulkActionCompletedFor', 'Bulk action completed for')} ${response.affectedCount} ${tAdmin('users', 'users')}`);
-      setSelectedUserIds([]);
-      setBulkAction('NONE');
-      setBulkBranchId('');
-      await loadData();
     } catch (error) {
-      toastApiError(error, tAdmin('failedToRunBulkUserAction', 'Failed to run bulk user action'));
-    } finally {
-      setBulkSubmitting(false);
+      toastApiError(error, tAdmin('failedToSendInvite', 'Failed to send invite'));
     }
   };
+
 
   useEffect(() => {
     if (!editingUser) {
@@ -431,39 +349,36 @@ export default function UserManagement() {
   }, [editingUser, editForm.role, editForm.branchId, editForm.isActive, loadRoleImpactPreview]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/*<div>
-          <h1 className="font-serif text-2xl text-foreground">{tAdmin('userRoleManagement', 'User & Role Management')}</h1>
-          <p className="text-sm text-muted-foreground">
-            {tAdmin('userRoleManagementSubheading', 'Create and manage admin users with role-based access control.')}
-          </p>
-        </div>*/}
-
-        <div className="flex items-center justify-end gap-2 ml-auto">
-          <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
+    <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
+      {/* 1. Header & Primary Action */}
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">User Management</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Manage system users, roles, and branch assignments</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void loadData()} disabled={loading} className="bg-white">
             <RefreshCcw className="mr-1 h-4 w-4" /> {tAdmin('refresh', 'Refresh')}
           </Button>
 
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="mr-1 h-4 w-4" /> {tAdmin('createUser', 'Create User')}
-              </Button>
+              <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 transition-colors">
+                <Plus className="h-4 w-4" /> {tAdmin('createUser', 'Create User')}
+              </button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>{tAdmin('createAdminUser', 'Create Admin User')}</DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>{tAdmin('fullName', 'Full Name')}</Label>
                   <Input
                     value={createForm.name}
                     onChange={e => setCreateForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder={tAdmin('enterFullName', 'Enter full name')}
+                    placeholder={tAdmin('enterFullName', 'e.g. Selam Tesfay')}
                   />
                 </div>
 
@@ -474,6 +389,7 @@ export default function UserManagement() {
                     value={createForm.email}
                     onChange={e => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
                     placeholder={tAdmin('adminEmailPlaceholder', 'name@zemen.com')}
+                    autoComplete="off"
                   />
                 </div>
 
@@ -484,6 +400,7 @@ export default function UserManagement() {
                     value={createForm.password}
                     onChange={e => setCreateForm(prev => ({ ...prev, password: e.target.value }))}
                     placeholder={tAdmin('minimum8Characters', 'Minimum 8 characters')}
+                    autoComplete="new-password"
                   />
                 </div>
 
@@ -499,7 +416,7 @@ export default function UserManagement() {
                         branchId: roleRequiresBranch(role) ? prev.branchId : '',
                       }));
                     }}
-                    className="w-full rounded border border-gray-300 bg-white px-3 py-2"
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500"
                   >
                     <option value="" disabled>{tAdmin('selectRole', 'Select role')}</option>
                     {ADMIN_ROLE_VALUES.map(role => (
@@ -508,23 +425,26 @@ export default function UserManagement() {
                   </select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label>{tAdmin('branch', 'Branch')}</Label>
-                  <select
-                    value={createForm.branchId || ''}
-                    onChange={e => setCreateForm(prev => ({ ...prev, branchId: e.target.value }))}
-                    className="w-full rounded border border-gray-300 bg-white px-3 py-2"
-                  >
-                    <option value="" disabled>{tAdmin('selectBranch', 'Select branch')}</option>
-                    <option value="" >{tAdmin('noBranch', 'No Branch')}</option>
-                    {branches.map(branch => (
-                      <option key={branch.id} value={branch.id}>{branch.name}</option>
-                    ))}
-                  </select>
-                  {roleRequiresBranch(createForm.role) ? (
-                    <p className="text-xs text-orange-600">{tAdmin('branchRequiredForRole', 'Branch is required for this role.')}</p>
-                  ) : null}
-                </div>
+                {user?.role !== 'BRANCH_MANAGER' && (
+                  <div className="space-y-1.5 col-span-2">
+                    <Label>{tAdmin('branch', 'Branch')}</Label>
+                    <Select value={createForm.branchId || 'NONE'} onValueChange={(v) => setCreateForm(prev => ({ ...prev, branchId: v === 'NONE' ? '' : v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={tAdmin('selectBranch', 'Select branch')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NONE" disabled>{tAdmin('selectBranch', 'Select branch')}</SelectItem>
+                        <SelectItem value="NONE">{tAdmin('noBranch', 'No Branch')}</SelectItem>
+                        {branches.map(b => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {roleRequiresBranch(createForm.role) ? (
+                      <p className="text-xs text-orange-600">{tAdmin('branchRequiredForRole', 'Branch is required for this role.')}</p>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               <DialogFooter>
@@ -538,216 +458,166 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* Filters and Bulk Actions */}
-           {/* Filters and Bulk Actions */}
-      <div className="flex items-center gap-2 overflow-x-auto w-full pb-1">
-        {/* Search input container - dynamically scales up to 240px */}
-        <div className="relative flex-1 min-w-[160px] max-w-[240px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9 w-full"
-            placeholder={tAdmin('searchByNameEmailBranch', 'Search by name, email, branch')}
+      {/* 2. Filters & Search Bar */}
+      <div className="mb-4 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
+          <input
+            type="text"
+            placeholder={tAdmin('searchByNameEmailBranch', 'Search by name, email, branch...')}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 bg-white shadow-sm border-none rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-shadow text-sm"
           />
         </div>
 
-        <Select value={roleFilter} onValueChange={value => setRoleFilter(value as 'ALL' | AdminRole)} aria-label={tAdmin('filterByRole', 'Filter by role')}>
-          <SelectTrigger className="w-[120px] shrink-0">
-            <SelectValue placeholder={tAdmin('filterByRole', 'Filter by role')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">{tAdmin('allRoles', 'All Roles')}</SelectItem>
-            {ADMIN_ROLE_VALUES.map(role => (
-              <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow"
+          value={roleFilter}
+          onChange={e => setRoleFilter(e.target.value as 'ALL' | AdminRole)}
+        >
+          <option value="ALL">{tAdmin('allRoles', 'All Roles')}</option>
+          {ADMIN_ROLE_VALUES.map(role => (
+            <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+          ))}
+        </select>
 
-        <Select value={statusFilter} onValueChange={value => setStatusFilter(value as 'ALL' | 'ACTIVE' | 'INACTIVE')} aria-label={tAdmin('filterByStatus', 'Filter by status')}>
-          <SelectTrigger className="w-[115px] shrink-0">
-            <SelectValue placeholder={tAdmin('filterByStatus', 'Filter by status')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">{tAdmin('allStatuses', 'All Statuses')}</SelectItem>
-            <SelectItem value="ACTIVE">{tAdmin('active', 'Active')}</SelectItem>
-            <SelectItem value="INACTIVE">{tAdmin('inactive', 'Inactive')}</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow"
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
+        >
+          <option value="ALL">{tAdmin('allStatuses', 'All Statuses')}</option>
+          <option value="ACTIVE">{tAdmin('active', 'Active')}</option>
+          <option value="INACTIVE">{tAdmin('inactive', 'Inactive')}</option>
+        </select>
 
-        <Select value={branchFilter} onValueChange={value => setBranchFilter(value as 'ALL' | string)} aria-label={tAdmin('filterByBranch', 'Filter by branch')}>
-          <SelectTrigger className="w-[120px] shrink-0">
-            <SelectValue placeholder={tAdmin('filterByBranch', 'Filter by branch')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">{tAdmin('allBranches', 'All Branches')}</SelectItem>
+        {user?.role !== 'BRANCH_MANAGER' && (
+          <select
+            className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow"
+            value={branchFilter}
+            onChange={e => setBranchFilter(e.target.value)}
+          >
+            <option value="ALL">{tAdmin('allBranches', 'All Branches')}</option>
             {branches.map(branch => (
-              <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
+              <option key={branch.id} value={branch.id}>{branch.name}</option>
             ))}
-          </SelectContent>
-        </Select>
-
-        <div className="h-4 w-[1px] bg-border shrink-0 mx-1" />
-
-        <Select value={bulkAction} onValueChange={value => setBulkAction(value as 'NONE' | 'ACTIVATE' | 'DEACTIVATE' | 'ASSIGN_BRANCH')} aria-label={tAdmin('selectBulkAction', 'Bulk action')}>
-          <SelectTrigger className="w-[120px] shrink-0">
-            <SelectValue placeholder={tAdmin('bulkAction', 'Bulk action')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="NONE">{tAdmin('selectAction', 'Select action')}</SelectItem>
-            <SelectItem value="ACTIVATE">{tAdmin('activateUsers', 'Activate users')}</SelectItem>
-            <SelectItem value="DEACTIVATE">{tAdmin('deactivateUsers', 'Deactivate users')}</SelectItem>
-            <SelectItem value="ASSIGN_BRANCH">{tAdmin('reassignBranch', 'Reassign branch')}</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Select value={bulkBranchId || 'NONE'} onValueChange={value => setBulkBranchId(value === 'NONE' ? '' : value)} aria-label={tAdmin('bulkBranch', 'Bulk branch')} disabled={bulkAction !== 'ASSIGN_BRANCH'}>
-            <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder={tAdmin('selectBranch', 'Select branch')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NONE">{tAdmin('noBranch', 'No Branch')}</SelectItem>
-              {branches.map(branch => (
-                <SelectItem key={branch.id} value={branch.id}>{branch.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button size="sm" className="whitespace-nowrap" onClick={() => void handleBulkAction()} disabled={bulkSubmitting}>
-            {bulkSubmitting ? tAdmin('applying', 'Applying...') : `${tAdmin('applyTo', 'Apply to')} ${selectedUserIds.length}`}
-          </Button>
-        </div>
+          </select>
+        )}
       </div>
 
-
-      {/* Users Table */}
-
-
-        <table className="w-full">
-          <thead>
-            <tr className="border-b">
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={allUsersSelected}
-                  onChange={event => {
-                    if (event.target.checked) {
-                      setSelectedUserIds(filteredUsers.map(user => user.id));
-                    } else {
-                      setSelectedUserIds([]);
-                    }
-                  }}
-                  aria-label={tAdmin('selectAllUsers', 'Select all users')}
-                />
-              </th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('user', 'User')}</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('role', 'Role')}</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('branch', 'Branch')}</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('emailVerification', 'Email Verification')}</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('status', 'Status')}</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('lastLogin', 'Last Login')}</th>
-              <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tAdmin('actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="p-4 text-sm text-muted-foreground" colSpan={8}>Loading users…</td>
-              </tr>
-            ) : filteredUsers.length === 0 ? (
-              <tr>
-                <td className="p-4 text-sm text-muted-foreground" colSpan={8}>No users found.</td>
-              </tr>
-            ) : (
-              filteredUsers.map(user => (
-                <tr key={user.id} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="p-3 align-top">
-                    <input
-                      type="checkbox"
-                      checked={selectedUserIds.includes(user.id)}
-                      onChange={event => handleToggleUserSelection(user.id, event.target.checked)}
-                      aria-label={`${tAdmin('select', 'Select')} ${user.name}`}
-                    />
-                  </td>
-                  <td className="p-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
-                    </div>
-                  </td>
-                  <td className="p-3 text-sm text-foreground">
-                    <RoleChip role={user.role} label={ROLE_LABELS[user.role]} />
-                  </td>
-                  <td className="p-3 text-sm text-muted-foreground">{user.branch?.name || tAdmin('noBranch', 'No Branch')}</td>
-                  <td className="p-3">
-                    <StatusBadge status={user.emailVerified ? 'Verified' : 'Pending'} />
-                  </td>
-                  <td className="p-3"><StatusBadge status={toStatusLabel(user.isActive)} /></td>
-                  <td className="p-3 text-xs text-muted-foreground">{formatDateTime(user.lastLogin, tAdmin('never', 'Never'))}</td>
-                  <td className="p-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-1.5">
-                          {tAdmin('actions', 'Actions')}
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => openEditDialog(user)}>{tAdmin('edit', 'Edit')}</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setResetTarget(user)}>{tAdmin('reset', 'Reset')}</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => void handleInviteUser(user)}>{tAdmin('invite', 'Invite')}</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={!user.isActive}
-                          onSelect={() => { setDeactivationTarget(user); setDeactivationReason(''); }}
-                        >
-                          {tAdmin('deactivate', 'Deactivate')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
+      {/* 3. Table Card Container */}
+      {loading ? (
+        <p className="rounded-md p-4 text-sm text-muted-foreground">Loading users...</p>
+      ) : (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap text-sm">
+              <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('user', 'User')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('role', 'Role')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('branch', 'Branch')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('status', 'Status')}</th>
+                  <th className="px-4 py-3 font-semibold">{tAdmin('lastLogin', 'Last Login')}</th>
+                  <th className="px-4 py-3 font-semibold text-center">{tAdmin('actions', 'Actions')}</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={6}>No users found.</td>
+                  </tr>
+                ) : (
+                  filteredUsers.map(u => (
+                    <tr key={u.id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => openEditDialog(u)}>
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-bold text-slate-900">{u.name}</p>
+                          <p className="text-xs text-slate-500">{u.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <RoleChip role={u.role} label={ROLE_LABELS[u.role]} />
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 font-medium">{u.branch?.name || tAdmin('noBranch', 'No Branch')}</td>
+                      <td className="px-4 py-3"><StatusBadge status={toStatusLabel(u.isActive)} /></td>
+                      <td className="px-4 py-3 text-xs text-slate-500 font-medium">{formatDateTime(u.lastLogin, tAdmin('never', 'Never'))}</td>
+                      <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-6">
+                          <button
+                            onClick={() => openEditDialog(u)}
+                            className="text-slate-400 hover:text-blue-600 transition-colors"
+                            title={tAdmin('edit', 'Edit')}
+                          >
+                            <Pencil className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => { setResetTarget(u); setResetPassword(''); }}
+                            className="text-slate-400 hover:text-amber-600 transition-colors"
+                            title={tAdmin('resetPassword', 'Reset Password')}
+                          >
+                            <KeyRound className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(u)}
+                            className="text-slate-400 hover:text-red-600 transition-colors"
+                            title={tAdmin('delete', 'Delete')}
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-slate-100 p-3 text-xs text-muted-foreground rounded-b-2xl">
-          <p className="text-xs text-muted-foreground">{tAdmin('page', 'Page')} {page} {tAdmin('of', 'of')} {totalPages} | {tAdmin('totalUsers', 'Total users')}: {total}</p>
-          <div className="flex items-center gap-2">
-            <Select value={String(limit)} onValueChange={value => { setLimit(Number(value)); setPage(1); }}>
-              <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">{tAdmin('adminPageSize10', '10 / page')}</SelectItem>
-                <SelectItem value="20">{tAdmin('adminPageSize20', '20 / page')}</SelectItem>
-                <SelectItem value="50">{tAdmin('adminPageSize50', '50 / page')}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={page <= 1}>{tAdmin('previous', 'Previous')}</Button>
-            <Button variant="outline" size="sm" onClick={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>{tAdmin('next', 'Next')}</Button>
+          {/* Pagination Footer */}
+          <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between bg-slate-50/50 gap-4 border-t border-slate-100">
+            <span className="text-sm text-slate-500 font-medium">
+              Showing {total === 0 ? 0 : (page - 1) * limit + 1}-
+              {Math.min(page * limit, total)} of {total}
+            </span>
+            <div className="flex gap-2 items-center">
+              <button
+                className="px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-slate-200 text-sm font-bold transition-colors text-slate-700 bg-white shadow-sm border border-slate-200"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <span className="text-sm font-bold text-slate-500 px-2">{page} / {totalPages}</span>
+              <button
+                className="px-4 py-2 rounded-lg disabled:opacity-50 hover:bg-slate-200 text-sm font-bold transition-colors text-slate-700 bg-white shadow-sm border border-slate-200"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
-      </div>)
+      )}
 
       {/* Edit User Dialog */}
 <Dialog open={Boolean(editingUser)} onOpenChange={open => !open && setEditingUser(null)}>
-  <DialogContent>
+  <DialogContent className="sm:max-w-[600px]">
     <DialogHeader>
       <DialogTitle>{tAdmin('editUser', 'Edit User')}</DialogTitle>
     </DialogHeader>
 
-    <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-4">
       <div className="space-y-1.5">
         <Label>{tAdmin('fullName', 'Full Name')}</Label>
-        <Input placeholder={tAdmin('enterFullName', 'e.g. Selam Tesfay')} value={editForm.name} onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))} />
+        <Input placeholder={tAdmin('enterFullName', 'e.g. Selam Tesfay')} value={editForm.name} onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))} autoComplete="off" />
       </div>
 
       <div className="space-y-1.5">
         <Label>{tAdmin('email', 'Email')}</Label>
-        <Input type="email" placeholder={tAdmin('adminEmailPlaceholder', 'e.g. selam@zemen.com')} value={editForm.email} onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))} />
+        <Input type="email" placeholder={tAdmin('adminEmailPlaceholder', 'e.g. selam@zemen.com')} value={editForm.email} onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))} autoComplete="off" />
       </div>
 
       <div className="space-y-1.5">
@@ -771,25 +641,6 @@ export default function UserManagement() {
       </div>
 
       <div className="space-y-1.5">
-        <Label>{tAdmin('branch', 'Branch')}</Label>
-        <select
-          value={editForm.branchId || ''}
-          onChange={e => setEditForm(prev => ({ ...prev, branchId: e.target.value }))}
-          className="w-full rounded border border-gray-300 bg-white px-3 py-2"
-        >
-          {/* Changed second duplicate placeholder key to explicit text string fallback value */}
-          <option value="" disabled>{tAdmin('selectBranch', 'Select branch')}</option>
-          <option value="NONE">{tAdmin('noBranch', 'No Branch')}</option>
-          {branches.map(branch => (
-            <option key={branch.id} value={branch.id}>{branch.name}</option>
-          ))}
-        </select>
-        {roleRequiresBranch(editForm.role) ? (
-          <p className="text-xs text-orange-600">{tAdmin('branchRequiredForRole', 'Branch is required for this role.')}</p>
-        ) : null}
-      </div>
-
-      <div className="space-y-1.5">
         <Label>{tAdmin('status', 'Status')}</Label>
         <select
           value={editForm.isActive ? 'ACTIVE' : 'INACTIVE'}
@@ -801,22 +652,58 @@ export default function UserManagement() {
         </select>
       </div>
 
+      {user?.role === 'BRANCH_MANAGER' ? null : (
+        <div className="space-y-1.5 col-span-2">
+          <Label>{tAdmin('branch', 'Branch')}</Label>
+          <Select value={editForm.branchId || 'NONE'} onValueChange={(v) => setEditForm(prev => ({ ...prev, branchId: v === 'NONE' ? '' : v }))}>
+            <SelectTrigger>
+              <SelectValue placeholder={tAdmin('selectBranch', 'Select branch')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE" disabled>{tAdmin('selectBranch', 'Select branch')}</SelectItem>
+              <SelectItem value="NONE">{tAdmin('noBranch', 'No Branch')}</SelectItem>
+              {branches.map(b => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {roleRequiresBranch(editForm.role) ? (
+            <p className="text-xs text-orange-600">{tAdmin('branchRequiredForRole', 'Branch is required for this role.')}</p>
+          ) : null}
+        </div>
+      )}
+
       {/* Role impact preview - Fixed layout wrapping and corrected missing syntax brackets */}
-      {roleImpactLoading && <p className="text-sm text-muted-foreground">{tAdmin('loading', 'Loading...')}</p>}
+      {roleImpactLoading && <p className="col-span-2 text-sm text-muted-foreground">{tAdmin('loading', 'Loading...')}</p>}
       {roleImpactPreview && (
-        <div className="space-y-1 pt-2">
-          {roleImpactPreview.impacts.map((impact, idx) => (
+        <div className="col-span-2 space-y-1 pt-2">
+          {roleImpactPreview.impacts?.map((impact, idx) => (
             <p key={idx} className={impact.level === 'error' ? 'text-red-600 text-sm' : impact.level === 'warning' ? 'text-yellow-600 text-sm' : 'text-green-600 text-sm'}>
               {impact.message}
             </p>
+          ))}
+          {roleImpactPreview.added?.map((item, idx) => (
+            <p key={`added-${idx}`} className="text-green-600 text-sm">+ {item}</p>
+          ))}
+          {roleImpactPreview.removed?.map((item, idx) => (
+            <p key={`removed-${idx}`} className="text-red-600 text-sm">- {item}</p>
           ))}
         </div>
       )}
     </div>
 
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setEditingUser(null)}>{tAdmin('cancel', 'Cancel')}</Button>
-      <Button onClick={() => void handleUpdateUser()} disabled={editSubmitting}>{editSubmitting ? tAdmin('saving', 'Saving…') : tAdmin('saveChanges', 'Save Changes')}</Button>
+    <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+      <div className="flex items-center gap-2 w-full sm:w-auto">
+        {editingUser && (
+          <Button variant="outline" type="button" onClick={() => setResetTarget(editingUser)} className="text-slate-600 gap-1.5">
+            <KeyRound className="h-4 w-4" /> {tAdmin('resetPassword', 'Reset Password')}
+          </Button>
+        )}
+      </div>
+      <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <Button variant="outline" onClick={() => setEditingUser(null)}>{tAdmin('cancel', 'Cancel')}</Button>
+        <Button onClick={() => void handleUpdateUser()} disabled={editSubmitting}>{editSubmitting ? tAdmin('saving', 'Saving…') : tAdmin('saveChanges', 'Save Changes')}</Button>
+      </div>
     </DialogFooter>
   </DialogContent>
 </Dialog>
@@ -829,7 +716,7 @@ export default function UserManagement() {
     </DialogHeader>
     <div className="space-y-4">
       <p>{tAdmin('resetPasswordFor', 'Reset password for')} {resetTarget?.name}</p>
-      <Input type="password" placeholder={tAdmin('newPassword', 'New password')} value={resetPassword} onChange={e => setResetPassword(e.target.value)} />
+      <Input type="password" placeholder={tAdmin('newPassword', 'New password')} value={resetPassword} onChange={e => setResetPassword(e.target.value)} autoComplete="new-password" />
     </div>
     <DialogFooter>
       <Button variant="outline" onClick={() => setResetTarget(null)}>{tAdmin('cancel', 'Cancel')}</Button>
@@ -838,19 +725,15 @@ export default function UserManagement() {
   </DialogContent>
 </Dialog>
 
-{/* Deactivate User Dialog */}
-<Dialog open={Boolean(deactivationTarget)} onOpenChange={open => !open && setDeactivationTarget(null)}>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>{tAdmin('deactivateUser', 'Deactivate User')}</DialogTitle>
-    </DialogHeader>
-    <div className="space-y-4">
-      <p>{tAdmin('deactivateUserConfirm', 'Are you sure you want to deactivate')} {deactivationTarget?.name}?</p>
-      <Textarea placeholder={tAdmin('deactivationReason', 'Reason for deactivation')} value={deactivationReason} onChange={e => setDeactivationReason(e.target.value)} />
+{/* Delete User Modal */}
+<ConfirmDeleteModal
+  open={Boolean(deleteTarget)}
+  loading={deleteSubmitting}
+  title={`Delete ${deleteTarget?.name || 'User'}?`}
+  description="Are you sure you want to permanently delete this user? This action cannot be undone."
+  onConfirm={() => void confirmDeleteUser()}
+  onClose={() => setDeleteTarget(null)}
+/>
     </div>
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setDeactivationTarget(null)}>{tAdmin('cancel', 'Cancel')}</Button>
-      <Button variant="destructive" onClick={() => void confirmDeactivateUser()} disabled={deactivateSubmitting}>{deactivateSubmitting ? tAdmin('deactivating', 'Deactivating…') : tAdmin('deactivate', 'Deactivate')}</Button>
-    </DialogFooter>
-  </DialogContent>
-</Dialog>}
+  );
+}

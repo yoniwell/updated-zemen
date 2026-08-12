@@ -23,11 +23,19 @@ export default defineConfig({
     port: 3000,
     host: true,
     allowedHosts: true,
+    proxy: {
+      '/api': 'http://localhost:5000',
+      '/uploads': 'http://localhost:5000'
+    }
   },
   preview: {
     port: 3000,
     host: true,
     allowedHosts: true,
+    proxy: {
+      '/api': 'http://localhost:5000',
+      '/uploads': 'http://localhost:5000'
+    }
   },
   resolve: {
     alias: {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { adminFetch } from '@/lib/adminApi';
-import { BRANCH_OPTIONS } from '@/lib/adminOptions';
 
 export type AdminBranch = {
   id: string;
@@ -9,6 +8,11 @@ export type AdminBranch = {
   location?: string;
   manager?: string | null;
   status?: string;
+  officeHours?: string | null;
+  mapUrl?: string | null;
+  phonePrimary?: string | null;
+  phoneSecondary?: string | null;
+  published?: boolean;
 };
 
 const normalize = (value: string): string => value.trim().toLowerCase();
@@ -22,7 +26,7 @@ export function useAdminBranches() {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminFetch<{ branches: AdminBranch[] }>('/api/admin/settings/branches');
+      const response = await adminFetch<{ branches: AdminBranch[] }>('/api/settings/branches');
       setBranches(response.branches || []);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load branches');
@@ -38,10 +42,6 @@ export function useAdminBranches() {
 
   const branchNames = useMemo(() => {
     const names = new Map<string, string>();
-
-    for (const name of BRANCH_OPTIONS) {
-      names.set(normalize(name), name);
-    }
 
     for (const branch of branches) {
       const name = (branch.name || '').trim();
