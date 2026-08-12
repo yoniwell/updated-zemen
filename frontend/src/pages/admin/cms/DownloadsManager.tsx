@@ -41,7 +41,11 @@ export default function DownloadsManager() {
     setLoading(true);
     try {
       const res: any = await adminFetch('/api/downloads/categories');
-      const cats = Array.isArray(res) ? res : Array.isArray(res?.categories) ? res.categories : Array.isArray(res?.data) ? res.data : [];
+      const rawCats = Array.isArray(res) ? res : Array.isArray(res?.categories) ? res.categories : Array.isArray(res?.data) ? res.data : [];
+      const cats: Category[] = rawCats.map((c: any) => ({
+        ...c,
+        files: Array.isArray(c?.files) ? c.files : [],
+      }));
       setCategories(cats);
       setSelectedCat(prev => prev ? cats.find((c: Category) => c.id === prev.id) ?? null : (cats[0] ?? null));
     } catch { toast.error('Failed to load categories'); }
@@ -199,7 +203,7 @@ export default function DownloadsManager() {
                     <FolderOpen className="w-4 h-4 shrink-0 text-slate-400" />
                     <div>
                       <div className="text-sm font-medium text-slate-800 truncate">{cat.name}</div>
-                      <div className="text-xs text-slate-400">{cat.files.length} files</div>
+                      <div className="text-xs text-slate-400">{(cat.files?.length || 0)} files</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -228,7 +232,7 @@ export default function DownloadsManager() {
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                   <ChevronRight className="w-8 h-8" /><p className="text-sm">Select a category to view its files</p>
                 </div>
-              ) : selectedCat.files.length === 0 ? (
+              ) : (selectedCat.files || []).length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2">
                   <AlertCircle className="w-6 h-6" /><p className="text-sm">No files uploaded yet</p>
                 </div>
@@ -244,7 +248,7 @@ export default function DownloadsManager() {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedCat.files.slice((filePage - 1) * 10, filePage * 10).map(file => (
+                    {(selectedCat.files || []).slice((filePage - 1) * 10, filePage * 10).map(file => (
                       <tr key={file.id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
                         <td className="py-3 px-4 font-medium text-slate-900 max-w-xs truncate">{file.name}</td>
                         <td className="py-3 px-4 text-slate-500 hidden md:table-cell">
