@@ -441,12 +441,13 @@ export default function MembershipPortal() {
         timeoutMs: 30000,
       });
 
-      const payload = (await response.json()) as { error?: string; resendInSeconds?: number, code?: string };
+      const payload = (await response.json()) as { error?: string; resendInSeconds?: number; code?: string; debugCode?: string };
       if (!response.ok) {
         throw new Error(publicErrorMessages.sendOtp);
       }
       
-      setValue('otpCode', '');
+      const otpVal = payload.debugCode || payload.code || '';
+      setValue('otpCode', otpVal);
 
       setOtpSent(true);
       setOtpVerified(false);
@@ -455,7 +456,11 @@ export default function MembershipPortal() {
       setOtpExpiresInSeconds((payload as { expiresInSeconds?: number }).expiresInSeconds ?? 120);
       setOtpLockedOut(false);
       setOtpHint('Code sent. Check your email and verify before it expires.');
-      toast.success('Verification code sent to your email');
+      if (otpVal) {
+        toast.success(`Verification code generated: ${otpVal}`);
+      } else {
+        toast.success('Verification code sent to your email');
+      }
     } catch (error) {
       console.error('Send membership OTP error:', error);
       setOtpHint(publicErrorMessages.sendOtp);
