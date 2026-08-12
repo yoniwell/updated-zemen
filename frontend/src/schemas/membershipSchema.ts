@@ -12,7 +12,7 @@ export const membershipSchema = z.object({
   grandfathersName: z.string().trim().min(1, "Grandfather's name is required").min(2, "Grandfather's name must be at least 2 characters"),
 
   idType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'STUDENT_ID', 'KEBELE_ID'], {
-    errorMap: () => ({ message: 'Please select a valid ID type' }),
+    message: 'Please select a valid ID type',
   }),
   idNumber: z.string().trim().min(1, 'ID number is required').min(3, 'ID number must be at least 3 characters'),
   idFrontName: z.string().min(1, 'Please upload the front of your ID document'),
@@ -24,14 +24,14 @@ export const membershipSchema = z.object({
   membershipPaymentAmount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
-  }, z.number({ invalid_type_error: 'Membership payment amount is required' }).min(10, 'Minimum membership payment is 10 ETB')),
+  }, z.number({ message: 'Membership payment amount is required' }).min(10, 'Minimum membership payment is 10 ETB')),
   membershipPaymentProofName: z.string().min(1, 'Please upload proof of membership payment receipt'),
 
   savingType: z.string().min(1, 'Please select a saving type'),
   savingPaymentAmount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
-  }, z.number({ invalid_type_error: 'Initial saving amount is required' }).positive('Saving amount must be greater than 0')),
+  }, z.number({ message: 'Initial saving amount is required' }).positive('Saving amount must be greater than 0')),
   savingTransactionRef: z.string().trim().min(1, 'Saving transaction reference is required').min(3, 'Transaction reference must be at least 3 characters'),
   savingProofName: z.string().min(1, 'Please upload proof of initial saving payment receipt'),
 

@@ -16,11 +16,11 @@ const loanBaseSchema = z.object({
   membershipNo: z.string().trim().min(1, 'Membership number is required').min(3, 'Membership number must be at least 3 characters'),
   phone: z.string().trim().min(1, 'Mobile phone number is required').regex(phoneRegex, 'Please enter a valid phone number'),
   idType: z.enum(['NATIONAL_ID', 'PASSPORT', 'DRIVING_LICENSE', 'STUDENT_ID', 'KEBELE_ID'], {
-    errorMap: () => ({ message: 'Please select a valid ID type' }),
+    message: 'Please select a valid ID type',
   }),
   idNumber: z.string().trim().min(1, 'ID number is required').min(3, 'ID number must be at least 3 characters'),
   maritalStatus: z.enum(['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED'], {
-    errorMap: () => ({ message: 'Please select your marital status' }),
+    message: 'Please select your marital status',
   }),
 
   // Loan Information
@@ -29,11 +29,11 @@ const loanBaseSchema = z.object({
   amount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
-  }, z.number({ invalid_type_error: 'Loan amount is required' }).min(100, 'Minimum loan amount is 100 ETB')),
+  }, z.number({ message: 'Loan amount is required' }).min(100, 'Minimum loan amount is 100 ETB')),
   tenure: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
-  }, z.number({ invalid_type_error: 'Loan tenure (months) is required' }).int('Tenure must be a whole number of months').positive('Tenure must be at least 1 month')),
+  }, z.number({ message: 'Loan tenure is required' }).int('Tenure must be a whole number of months').positive('Tenure must be at least 1 month')),
 
   // Required Documents
   loanApplicationLetter: z.string().min(1, 'Please upload your official loan application letter'),
