@@ -560,11 +560,7 @@ export default function MembersList() {
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
-                          ) : (
-                            <button className="text-slate-200" title={tAdmin('onlySuperAdminCanDelete', 'Only SUPER_ADMIN can delete')} disabled>
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          )}
+                          ) : null}
                         </div>
                       </td>
                     </tr>

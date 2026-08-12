@@ -8,5 +8,7 @@ const controller = new ApplicationsController();
 applicationsRoutes.post('/otp/send', controller.sendOtp);
 applicationsRoutes.post('/otp/verify', controller.verifyOtp);
 
+applicationsRoutes.get('/status/:reference', controller.getApplicationStatus);
+
 applicationsRoutes.get('/documents/review', authenticate, controller.getReviewDocuments);
 applicationsRoutes.patch('/documents/bulk-status', authenticate, controller.bulkUpdateDocumentStatus);

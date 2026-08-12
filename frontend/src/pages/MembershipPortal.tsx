@@ -364,6 +364,7 @@ export default function MembershipPortal() {
 
     const applicantName = `${data.firstName} ${data.fathersName || ''} ${data.grandfathersName || ''}`.trim();
     const uploads: Array<{ file: File; category: string; label: string }> = [];
+    toast.info('Submitting application and uploading documents...', { id: 'submit-toast' });
 
     if (uploadedFiles.idFrontName) {
       uploads.push({ file: uploadedFiles.idFrontName, category: data.idType === 'PASSPORT' ? 'PASSPORT' : 'NATIONAL_ID_FRONT', label: 'ID Front' });
@@ -385,16 +386,18 @@ export default function MembershipPortal() {
     }
 
     const failedUploads: string[] = [];
-    for (const upload of uploads) {
+
+    await Promise.all(uploads.map(async (upload) => {
       try {
         await uploadMembershipDocument(result.application.id, upload.file, upload.category);
       } catch {
         failedUploads.push(upload.label);
       }
-    }
+    }));
 
     setSubmittedRef(result.application.referenceNo);
     setSubmittedName(applicantName);
+    toast.dismiss('submit-toast');
     if (failedUploads.length > 0) {
       toast.warning(`Application submitted, but failed to upload: ${failedUploads.join(', ')}`);
       return;

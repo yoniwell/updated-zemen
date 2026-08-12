@@ -6,7 +6,7 @@ import { useAdminBranches } from '@/hooks/useAdminBranches';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { toast } from 'sonner';
 import { useAdminI18n } from '@/lib/uiI18n';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, BadgeCheck } from 'lucide-react';
 import { Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Info } from 'lucide-react';
@@ -257,7 +257,7 @@ export default function MembershipQueue() {
                 <th className="px-4 py-3 font-semibold">{tAdmin('branch', 'Branch')}</th>
                 <th className="px-4 py-3 font-semibold">{tAdmin('status', 'Status')}</th>
                 <th className="px-4 py-3 font-semibold">{tAdmin('date', 'Date')}</th>
-                <th className="px-4 py-3 font-semibold text-center">{tAdmin('missingDocs', 'Missing Docs')}</th>
+                <th className="px-4 py-3 font-semibold text-center">{tAdmin('unverifiedDocs', 'Unverified Docs')}</th>
                 <th className="px-4 py-3 font-semibold">{tAdmin('updated', 'Updated')}</th>
                 <th className="px-4 py-3 font-semibold text-center">{tAdmin('actions', 'Actions')}</th>
               </tr>
@@ -267,7 +267,7 @@ export default function MembershipQueue() {
                 const applicantName = formatApplicantName(application.applicant);
                 const branchName = application.branch?.name || '—';
                 const documents = application.documents || [];
-                const missingDocs = documents.filter((doc) => doc.status !== 'VERIFIED').length;
+                const unverifiedDocs = documents.filter((doc) => doc.status !== 'VERIFIED').length;
                 const displayDate = application.submittedAt || application.updatedAt;
                 
                 return (
@@ -281,13 +281,16 @@ export default function MembershipQueue() {
                   <td className="px-4 py-3"><StatusBadge status={application.status} /></td>
                   <td className="px-4 py-3 text-slate-500">{new Date(displayDate).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-center">
-                    {missingDocs > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-orange-600 font-bold bg-orange-100 px-2 py-0.5 rounded-full">
+                    {unverifiedDocs > 0 ? (
+                      <div className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2 py-1 rounded-full text-xs font-bold border border-amber-200">
                         <AlertTriangle className="h-3 w-3" />
-                        {missingDocs}
-                      </span>
+                        {unverifiedDocs}
+                      </div>
                     ) : (
-                      <span className="text-xs text-green-600 font-bold bg-green-100 px-2 py-0.5 rounded-full">✓ OK</span>
+                      <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2 py-1 rounded-full text-xs font-bold border border-emerald-200">
+                        <BadgeCheck className="h-3 w-3" />
+                        0
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{new Date(application.updatedAt).toLocaleString()}</td>

@@ -68,6 +68,58 @@ export class ApplicationsController {
     }
   };
 
+  public getApplicationStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { reference } = req.params;
+      const { prisma } = require('../../../database/prisma');
+
+      // Check membership first
+      const membership = await prisma.membershipApplication.findFirst({
+        where: { referenceNo: reference },
+        select: { id: true, referenceNo: true, status: true, createdAt: true, updatedAt: true }
+      });
+
+      if (membership) {
+        res.status(200).json({
+          applicationType: 'membership',
+          application: {
+            id: membership.id,
+            referenceNo: membership.referenceNo,
+            status: membership.status,
+            submittedAt: membership.createdAt,
+            updatedAt: membership.updatedAt
+          }
+        });
+        return;
+      }
+
+      // Check loans
+      const loan = await prisma.loanApplication.findFirst({
+        where: { referenceNo: reference },
+        select: { id: true, referenceNo: true, status: true, createdAt: true, updatedAt: true }
+      });
+
+      if (loan) {
+        res.status(200).json({
+          applicationType: 'loan',
+          application: {
+            id: loan.id,
+            referenceNo: loan.referenceNo,
+            status: loan.status,
+            submittedAt: loan.createdAt,
+            updatedAt: loan.updatedAt
+          }
+        });
+        return;
+      }
+
+      res.status(404).json({ error: { message: 'Application not found with the provided reference number' } });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Failed to fetch application status');
+      res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+  };
+
   public getReviewDocuments = async (req: Request, res: Response): Promise<void> => {
     try {
       const { prisma } = require('../../../database/prisma');

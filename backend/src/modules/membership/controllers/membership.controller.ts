@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { MembershipService } from '../services/membership.service';
 import { sendResponse } from '../../../common/responses/response.helper';
 import { AuthRequest } from '../../../middleware/auth.middleware';
+import { sendNotification } from '../../notifications/services/notification.service';
+import { logger } from '../../../common/utils/logger';
 
 export class MembershipController {
   constructor(private readonly membershipService: MembershipService) {}
@@ -9,6 +11,19 @@ export class MembershipController {
   applyForMembership = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const application = await this.membershipService.applyForMembership(req.body);
+      
+      // Send success email asynchronously
+      if (req.body.email) {
+        setImmediate(() => {
+          sendNotification({
+            to: req.body.email,
+            subject: 'Membership Application Received',
+            message: `Dear ${req.body.firstName},\n\nWe have successfully received your membership application. Your reference number is ${application.referenceNo || application.id}. We will review your application and get back to you soon.\n\nThank you,\nZemen Sacco`,
+            channel: 'EMAIL'
+          }).catch(err => logger.error({ err }, 'Failed to send membership success email'));
+        });
+      }
+
       sendResponse(res, 201, { application });
     } catch (error) {
       next(error);

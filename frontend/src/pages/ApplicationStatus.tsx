@@ -88,7 +88,11 @@ export default function ApplicationStatus() {
 
       if (!response.ok) {
         setResult(null);
-        setError(payload && 'error' in payload && payload.error ? payload.error : tPublic('statusErrorFetchNow', 'Unable to fetch status right now.'));
+        let errMsg = tPublic('statusErrorFetchNow', 'Unable to fetch status right now.');
+        if (payload && 'error' in payload && payload.error) {
+          errMsg = typeof payload.error === 'string' ? payload.error : (payload.error as any).message || errMsg;
+        }
+        setError(errMsg);
         return;
       }
 

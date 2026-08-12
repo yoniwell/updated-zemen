@@ -1,4 +1,6 @@
 import { LoansRepository } from '../repositories/loans.repository';
+import { sendNotification } from '../../notifications/services/notification.service';
+import { logger } from '../../../common/utils/logger';
 import { ApplyLoanDto, UpdateLoanStatusDto, AssignLoanDto, UpdateLoanDto } from '../dto/loans.dto';
 import { AppError } from '../../../common/errors/AppError';
 import { Prisma } from '@prisma/client';
@@ -129,6 +131,21 @@ export class LoansService {
       targetId: id,
       details: `Status updated to ${dto.status}`
     });
+
+    const applicantEmail = application.applicant?.email;
+    const applicantName = application.applicant?.firstName || 'Applicant';
+    const referenceNo = application.referenceNo || application.id;
+
+    if (dto.status === 'APPROVED' && applicantEmail) {
+      setImmediate(() => {
+        sendNotification({
+          to: applicantEmail,
+          subject: 'Loan Application Approved',
+          message: `Dear ${applicantName},\n\nGreat news! Your loan application (Reference: ${referenceNo}) has been approved. We will be in touch with the next steps shortly.\n\nThank you,\nZemen Sacco`,
+          channel: 'EMAIL'
+        }).catch(err => logger.error({ err }, 'Failed to send loan approval email'));
+      });
+    }
 
     return updated;
   }

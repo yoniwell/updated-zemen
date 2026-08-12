@@ -455,6 +455,7 @@ export default function LoanPortal() {
     }
 
     const uploads: Array<{ file: File; category: string; label: string }> = [];
+    toast.info(tPublicUi('submittingLoanApplication', 'Submitting application and uploading documents...'), { id: 'submit-toast' });
     if (uploadedFiles.loanApplicationLetter) uploads.push({ file: uploadedFiles.loanApplicationLetter, category: 'LOAN_APPLICATION_LETTER', label: tPublicUi('loanApplicationLetter', 'Loan Application Letter') });
     if (uploadedFiles.loanRequestForm) uploads.push({ file: uploadedFiles.loanRequestForm, category: 'LOAN_REQUEST_FORM', label: tPublicUi('loanRequestForm', 'Loan Request Form') });
     if (uploadedFiles.personalPhoto) uploads.push({ file: uploadedFiles.personalPhoto, category: 'PERSONAL_PHOTO', label: tPublicUi('personalPhoto', 'Personal Photo') });
@@ -465,18 +466,20 @@ export default function LoanPortal() {
     if (uploadedFiles.businessPlan) uploads.push({ file: uploadedFiles.businessPlan, category: 'BUSINESS_PLAN', label: tPublicUi('businessPlan', 'Business Plan') });
 
     const failedUploads: string[] = [];
-    for (const upload of uploads) {
+    
+    await Promise.all(uploads.map(async (upload) => {
       try {
         // FIXED: Added casting protection wrapper to clear downstream loop template parsing conflicts
         await uploadLoanDocument((result as LoanSubmitResponse).application.id, upload.file, upload.category);
       } catch {
         failedUploads.push(upload.label);
       }
-    }
+    }));
 
     setReferenceNo((result as LoanSubmitResponse).application.referenceNo);
     setSubmittedName(applicantName);
     setStep(8); // Show success
+    toast.dismiss('submit-toast');
     if (failedUploads.length > 0) {
       toast.warning(`${tPublicUi('applicationSubmittedUploadFailed', 'Application submitted, but failed to upload')}: ${failedUploads.join(', ')}`);
       sessionStorage.removeItem('loan_portal_state');

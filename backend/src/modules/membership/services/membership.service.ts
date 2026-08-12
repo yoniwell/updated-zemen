@@ -1,4 +1,6 @@
 import { MembershipRepository } from '../repositories/membership.repository';
+import { sendNotification } from '../../notifications/services/notification.service';
+import { logger } from '../../../common/utils/logger';
 import { ApplyMembershipDto, UpdateMembershipStatusDto, AssignMembershipDto, UpdateMembershipDto } from '../dto/membership.dto';
 import { AppError } from '../../../common/errors/AppError';
 import { Prisma } from '@prisma/client';
@@ -125,6 +127,21 @@ export class MembershipService {
       targetId: id,
       details: `Status updated to ${dto.status}`
     });
+
+    const applicantEmail = application.applicant?.email;
+    const applicantName = application.applicant?.firstName || 'Applicant';
+    const referenceNo = application.referenceNo || application.id;
+
+    if (dto.status === 'APPROVED' && applicantEmail) {
+      setImmediate(() => {
+        sendNotification({
+          to: applicantEmail,
+          subject: 'Membership Application Approved',
+          message: `Dear ${applicantName},\n\nGreat news! Your membership application (Reference: ${referenceNo}) has been approved. Welcome to Zemen Sacco!\n\nThank you,\nZemen Sacco`,
+          channel: 'EMAIL'
+        }).catch(err => logger.error({ err }, 'Failed to send membership approval email'));
+      });
+    }
 
     return updated;
   }

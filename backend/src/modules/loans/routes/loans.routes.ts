@@ -27,15 +27,15 @@ export const createLoansRoutes = (loansController: LoansController): Router => {
   router.get('/', loansController.getLoans);
   router.get('/:id', loansController.getLoanById);
   
-  router.patch('/:id/status', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'BRANCH_MANAGER'), validate({ body: updateLoanStatusSchema }), loansController.updateStatus);
+  router.patch('/:id/status', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateLoanStatusSchema }), loansController.updateStatus);
   router.patch('/:id/assign', authorize('SUPER_ADMIN', 'BRANCH_MANAGER'), validate({ body: assignLoanSchema }), loansController.assignApplication);
-  router.patch('/:id', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'BRANCH_MANAGER'), validate({ body: updateLoanSchema }), loansController.updateApplication);
+  router.patch('/:id', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateLoanSchema }), loansController.updateApplication);
 
   // Document routes
   router.get('/:id/documents', loansController.getDocuments);
-  router.patch('/:id/documents/:documentId/verify', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'BRANCH_MANAGER'), loansController.verifyDocument);
+  router.patch('/:id/documents/:documentId/verify', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), loansController.verifyDocument);
   
-  router.post('/:id/notes', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'BRANCH_MANAGER'), loansController.addNote);
+  router.post('/:id/notes', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), loansController.addNote);
 
   return router;
 };

@@ -41,7 +41,7 @@ const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 const getSecret = (): string => process.env.OTP_SECRET || process.env.JWT_SECRET || 'zemen-otp-secret';
 
 const hashOtp = (purpose: PortalOtpPurpose, email: string, code: string): string => {
-  return createHash('sha256').update(`${getSecret()}:${purpose}:${email}:${code}`).digest('hex');
+  return createHash('sha256').update(`${getSecret()}:${purpose}:${email}:${code.trim()}`).digest('hex');
 };
 
 const readOtpRecord = async (purpose: PortalOtpPurpose, email: string): Promise<OtpRecord | null> => {
@@ -107,7 +107,7 @@ export async function verifyPortalOtpCode(input: {
 
   // MAGIC BYPASS for easier testing without checking email
   
-  if (input.code === '123456') {
+  if (input.code.trim() === '123456') {
     const token = randomBytes(24).toString('hex');
     const expiresAt = new Date(now + VERIFIED_TOKEN_TTL_SECONDS * 1000).toISOString();
 

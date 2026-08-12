@@ -27,15 +27,15 @@ export const createMembershipRoutes = (membershipController: MembershipControlle
   router.get('/', membershipController.getMemberships);
   router.get('/:id', membershipController.getMembershipById);
   
-  router.patch('/:id/status', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'BRANCH_MANAGER'), validate({ body: updateMembershipStatusSchema }), membershipController.updateStatus);
+  router.patch('/:id/status', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateMembershipStatusSchema }), membershipController.updateStatus);
   router.patch('/:id/assign', authorize('SUPER_ADMIN', 'BRANCH_MANAGER'), validate({ body: assignMembershipSchema }), membershipController.assignApplication);
-  router.patch('/:id', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'BRANCH_MANAGER'), validate({ body: updateMembershipSchema }), membershipController.updateApplication);
+  router.patch('/:id', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateMembershipSchema }), membershipController.updateApplication);
 
   // Document routes
   router.get('/:id/documents', membershipController.getDocuments);
-  router.patch('/:id/documents/:documentId/verify', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'BRANCH_MANAGER', 'KYC_OFFICER'), membershipController.verifyDocument);
+  router.patch('/:id/documents/:documentId/verify', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER', 'KYC_OFFICER'), membershipController.verifyDocument);
   
-  router.post('/:id/notes', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'BRANCH_MANAGER', 'KYC_OFFICER'), membershipController.addNote);
+  router.post('/:id/notes', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER', 'KYC_OFFICER'), membershipController.addNote);
 
   return router;
 };

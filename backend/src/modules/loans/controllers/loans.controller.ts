@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { LoansService } from '../services/loans.service';
 import { sendResponse } from '../../../common/responses/response.helper';
 import { AuthRequest } from '../../../middleware/auth.middleware';
+import { sendNotification } from '../../notifications/services/notification.service';
+import { logger } from '../../../common/utils/logger';
 
 export class LoansController {
   constructor(private readonly loansService: LoansService) {}
@@ -9,6 +11,19 @@ export class LoansController {
   applyForLoan = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const application = await this.loansService.applyForLoan(req.body);
+
+      // Send success email asynchronously
+      if (req.body.email) {
+        setImmediate(() => {
+          sendNotification({
+            to: req.body.email,
+            subject: 'Loan Application Received',
+            message: `Dear ${req.body.firstName},\n\nWe have successfully received your loan application. Your reference number is ${application.referenceNo || application.id}. We will review your application and get back to you soon.\n\nThank you,\nZemen Sacco`,
+            channel: 'EMAIL'
+          }).catch(err => logger.error({ err }, 'Failed to send loan success email'));
+        });
+      }
+
       sendResponse(res, 201, { application });
     } catch (error) {
       next(error);
