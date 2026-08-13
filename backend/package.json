@@ -17,6 +17,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:seed": "tsx src/seed.ts",
+    "db:clear": "tsx src/clear-data.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
