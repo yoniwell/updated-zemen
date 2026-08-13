@@ -161,31 +161,14 @@ export default function LoanPortal() {
     }
   }, [activeTenures, setValue]);
 
-  // Load saved session state (expires after 24h)
+  // Purge any old session draft state on mount (fresh form start)
   useEffect(() => {
-    const saved = localStorage.getItem('loan_portal_state');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const isExpired = parsed.timestamp && Date.now() - parsed.timestamp > 86400000;
-        if (isExpired) {
-          localStorage.removeItem('loan_portal_state');
-          return;
-        }
-        if (parsed.formValues) {
-           reset({ ...parsed.formValues, otpCode: '' });
-        }
-        if (parsed.step) {
-          const targetStep = Math.min(parsed.step, 5);
-          setStep(targetStep);
-        }
-        if (parsed.otpVerified) setOtpVerified(parsed.otpVerified);
-        if (parsed.otpVerificationToken) setOtpVerificationToken(parsed.otpVerificationToken);
-      } catch (e) {
-        console.error('Failed to restore loan session state', e);
-      }
+    try {
+      localStorage.removeItem('loan_portal_state');
+    } catch {
+      // ignore
     }
-  }, [reset]);
+  }, []);
 
   // Fetch dynamic public data once on mount
   useEffect(() => {
@@ -222,18 +205,6 @@ export default function LoanPortal() {
 
     return () => controller.abort();
   }, [getValues, setValue]);
-
-  // Save session state on change
-  useEffect(() => {
-    const toSave = {
-      formValues: { ...values, otpCode: '' }, // Never persist the OTP code itself
-      step,
-      otpVerified,
-      otpVerificationToken,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem('loan_portal_state', JSON.stringify(toSave));
-  }, [values, step, otpVerified, otpVerificationToken]);
 
   useEffect(() => {
     if (resendInSeconds <= 0) {

@@ -123,31 +123,14 @@ export default function MembershipPortal() {
 
   const values = watch();
 
-  // Load saved session state (expires after 24h)
+  // Purge any old session draft state on mount (fresh form start)
   useEffect(() => {
-    const saved = localStorage.getItem('membership_portal_state');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const isExpired = parsed.timestamp && Date.now() - parsed.timestamp > 86400000;
-        if (isExpired) {
-          localStorage.removeItem('membership_portal_state');
-          return;
-        }
-        if (parsed.formValues) {
-          reset({ ...initialValues, ...parsed.formValues, otpCode: '' });
-        }
-        if (parsed.step) {
-          const targetStep = Math.min(parsed.step, 4);
-          setStep(targetStep);
-        }
-        if (parsed.otpVerified) setOtpVerified(parsed.otpVerified);
-        if (parsed.otpVerificationToken) setOtpVerificationToken(parsed.otpVerificationToken);
-      } catch (e) {
-        console.error('Failed to restore membership session state', e);
-      }
+    try {
+      localStorage.removeItem('membership_portal_state');
+    } catch {
+      // ignore
     }
-  }, [reset]);
+  }, []);
 
   // Load public branches & saving types once on mount
   useEffect(() => {
@@ -191,18 +174,6 @@ export default function MembershipPortal() {
 
     return () => controller.abort();
   }, [getValues, setValue]);
-
-  // Save session state on change
-  useEffect(() => {
-    const toSave = {
-      formValues: { ...values, otpCode: '' }, // Never persist the OTP code itself
-      step,
-      otpVerified,
-      otpVerificationToken,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem('membership_portal_state', JSON.stringify(toSave));
-  }, [values, step, otpVerified, otpVerificationToken]);
 
   useEffect(() => {
     if (resendInSeconds <= 0) {
