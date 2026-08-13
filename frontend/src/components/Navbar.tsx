@@ -24,7 +24,7 @@ const standaloneLinks: NavLink[] = [
 
 const applicationsDropdownLinks: NavLink[] = [
   { key: 'membership', id: 'membership' },
-  { key: 'loans', id: 'loans' },
+  { key: 'loans', id: 'loanInfo' },
   { key: 'trackApplication', id: 'status' },
 ];
 
@@ -111,8 +111,8 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
     );
   }, [searchQuery, searchableLinks, t]);
 
-  const isServicesSectionActive = currentPage === 'services' || currentPage === 'savings' || currentPage === 'downloads';
-  const isApplicationsSectionActive = currentPage === 'membership' || currentPage === 'loans' || currentPage === 'status';
+  const isServicesSectionActive = currentPage === 'services' || currentPage === 'savings' || currentPage === 'downloads' || currentPage === 'loans';
+  const isApplicationsSectionActive = currentPage === 'membership' || currentPage === 'loanInfo' || currentPage === 'status';
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] w-full shadow-sm">

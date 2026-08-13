@@ -3,6 +3,7 @@ export type PublicPage =
   | 'about'
   | 'services'
   | 'loans'
+  | 'loanInfo'
   | 'savings'
   | 'downloads'
   | 'membership'
@@ -18,6 +19,7 @@ export const publicRouteMap: Record<PublicPage, string> = {
   about: '/about',
   services: '/services',
   loans: '/loans',
+  loanInfo: '/loan-info',
   savings: '/savings',
   downloads: '/downloads',
   membership: '/membership',
@@ -40,6 +42,7 @@ const pathToPageMap: Record<string, PublicPage> = {
   '/about': 'about',
   '/services': 'services',
   '/loans': 'loans',
+  '/loan-info': 'loanInfo',
   '/loan-apply': 'loans',
   '/savings': 'savings',
   '/downloads': 'downloads',

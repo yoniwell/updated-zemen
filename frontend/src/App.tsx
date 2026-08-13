@@ -10,6 +10,7 @@ import Home from './pages/Home';
 import About from './pages/About';
 import Services from './pages/Services';
 import Loans from './pages/Loans';
+import LoanApplicationInfo from './pages/LoanApplicationInfo';
 import Savings from './pages/Savings';
 import Downloads from './pages/Downloads';
 import Membership from './pages/Membership';
@@ -173,6 +174,7 @@ function AppContent() {
           <Route path="/about" element={<About />} />
           <Route path="/services" element={<Services onNavigate={setCurrentPage} />} />
           <Route path="/loans" element={<Loans onNavigate={setCurrentPage} />} />
+          <Route path="/loan-info" element={<LoanApplicationInfo onNavigate={setCurrentPage} />} />
           <Route path="/savings" element={<Savings onNavigate={setCurrentPage} />} />
           <Route path="/downloads" element={<Downloads />} />
           <Route path="/membership" element={<Membership onNavigate={setCurrentPage} />} />

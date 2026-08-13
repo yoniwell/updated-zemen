@@ -106,6 +106,84 @@ export default function Savings({ onNavigate }: SavingsProps) {
         </div>
       </section>
 
+      {/* FEATURED SAVINGS PRODUCTS (CMS CONTENT) */}
+      {cmsServices.length > 0 && (
+        <section className="py-10 sm:py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-10">
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                Featured Wealth Building
+              </span>
+              <h2 className="text-xl sm:text-3xl font-black text-blue-950 uppercase italic tracking-tighter mt-3 mb-2">
+                Our Savings Products
+              </h2>
+              <p className="text-slate-600 font-medium text-xs sm:text-sm">
+                Explore our range of savings programs configured directly in Content Admin.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {cmsServices.map((product, index) => (
+                <motion.div
+                  key={product.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="group relative flex flex-col justify-between overflow-hidden border-2 border-slate-100 hover:border-blue-600 rounded-xl bg-white p-5 shadow-md hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-50/50 rounded-bl-full group-hover:bg-blue-600/10 transition-colors duration-300" />
+                  
+                  <div className="relative z-10 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-50 text-blue-700 rounded-lg flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                        <Coins className="h-5 w-5" />
+                      </div>
+                      <h3 className="text-base font-black text-blue-950 uppercase italic tracking-tighter leading-none">
+                        {product.title}
+                      </h3>
+                    </div>
+
+                    <div className="space-y-3 pt-1">
+                      <p className="text-slate-600 font-bold italic text-xs leading-relaxed line-clamp-4">
+                        {product.description}
+                      </p>
+
+                      {product.features && product.features.length > 0 && (
+                        <div className="pt-3 border-t border-slate-50 space-y-1.5">
+                          <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 italic">Product Benefits</h4>
+                          {product.features.map((feature, fIdx) => (
+                            <div key={fIdx} className="flex items-start gap-1.5 text-xs">
+                              <span className="text-blue-600 font-bold mt-0.5">✓</span>
+                              <span className="text-slate-700 font-medium">{feature}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-slate-100 relative z-10">
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-950 text-white font-black uppercase tracking-widest text-[10px] h-9 shadow transition-all"
+                      onClick={() => {
+                        if (product.ctaPath) {
+                          window.location.assign(product.ctaPath);
+                        } else {
+                          onNavigate('apply');
+                        }
+                      }}
+                    >
+                      {product.ctaLabel || 'Apply Now'} <ArrowRight className="ml-1.5 h-3 w-3" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Ultra-Compact Savings Types Table Section */}
       <section className="py-6 sm:py-10 md:py-16 bg-slate-50 border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-2 sm:px-6 lg:px-8">

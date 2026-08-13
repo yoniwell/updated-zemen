@@ -112,6 +112,7 @@ export default function MembershipPortal() {
     trigger,
     watch,
     setValue,
+    setError,
     getValues,
     reset,
     formState: { errors, isSubmitting },
@@ -245,12 +246,13 @@ export default function MembershipPortal() {
       ['Email', values.email || 'N/A'],
       ['Name', `${values.firstName} ${values.fathersName || ''} ${values.grandfathersName || ''}`.trim()],
       ['ID Type', values.idType],
-      ['ID Number', values.idNumber],
+      ['ID Number', values.idNumber || '-'],
       ['Preferred Branch', values.preferredBranch || '-'],
-      ['Membership Payment', Number(values.membershipPaymentAmount ?? 0)],
+      ['Membership Payment (ETB)', Number(values.membershipPaymentAmount ?? 0)],
       ['Membership Payment Ref', values.membershipTransactionRef || '-'],
       ['Saving Type', values.savingType || '-'],
-      ['Saving Payment', Number(values.savingPaymentAmount ?? 0)],
+      ['Saving Payment (ETB)', Number(values.savingPaymentAmount ?? 0)],
+      ['Saving Transaction Ref', values.savingTransactionRef || '-'],
     ],
     [values]
   );
@@ -742,20 +744,22 @@ export default function MembershipPortal() {
                 </select>
               </Field>
 
-              {/* --- Membership fee (read-only, auto-filled from saving type) --- */}
+              {/* --- Membership fee (auto-filled from saving type, editable as fallback) --- */}
               <Field label="Membership Payment Amount (ETB)" error={errorText('membershipPaymentAmount')}>
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
-                  readOnly
-                  className="bg-slate-100 cursor-not-allowed text-slate-600"
+                  readOnly={selectedSavingTypeObj?.membershipFee != null}
+                  className={selectedSavingTypeObj?.membershipFee != null ? 'bg-slate-100 cursor-not-allowed text-slate-600' : ''}
                   {...register('membershipPaymentAmount', { valueAsNumber: true })}
                 />
                 <p className="mt-1.5 text-xs text-slate-500">
                   {selectedSavingTypeObj?.membershipFee != null
                     ? `Auto-set from saving type: ${selectedSavingTypeObj.name} — ${selectedSavingTypeObj.membershipFee.toLocaleString()} ETB`
-                    : 'Select a saving type above to auto-fill this amount.'}
+                    : selectedSavingTypeObj
+                      ? 'No fee configured for this saving type — enter the amount manually.'
+                      : 'Select a saving type above to auto-fill this amount.'}
                 </p>
               </Field>
 
@@ -767,6 +771,7 @@ export default function MembershipPortal() {
               {/* --- Membership payment proof --- */}
               <FileInput
                 label="Upload Payment Proof (Membership)"
+                required
                 error={errorText('membershipPaymentProofName')}
                 value={getValues('membershipPaymentProofName')}
                 onPick={(file) => setUploadedFile('membershipPaymentProofName', file)}
@@ -778,7 +783,7 @@ export default function MembershipPortal() {
                   type="number"
                   step="0.01"
                   className={errorText('savingPaymentAmount') ? 'border-red-500 text-red-900 focus:ring-red-500 font-semibold' : ''}
-                  {...register('savingPaymentAmount')}
+                  {...register('savingPaymentAmount', { valueAsNumber: true })}
                 />
                 {errorText('savingPaymentAmount') ? (
                   <p className="mt-1.5 text-xs font-bold text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200 flex items-center gap-1.5">
