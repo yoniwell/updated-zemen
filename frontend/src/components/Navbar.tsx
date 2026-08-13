@@ -16,12 +16,14 @@ type NavLink = { key: keyof typeof translations.en; id: Page };
 const standaloneLinks: NavLink[] = [
   { key: 'home', id: 'home' },
   { key: 'about', id: 'about' },
+  { key: 'apply', id: 'apply' },
   { key: 'news', id: 'news' },
   { key: 'faq', id: 'faq' },
   { key: 'contact', id: 'contact' },
 ];
 
 const applicationsDropdownLinks: NavLink[] = [
+  { key: 'apply', id: 'apply' },
   { key: 'membership', id: 'membership' },
   { key: 'loans', id: 'loans' },
   { key: 'trackApplication', id: 'status' },
@@ -313,42 +315,97 @@ export default function Navbar({ currentPage, onNavigate }: NavbarProps) {
         </div>
       </div>
 
-      {/* 3. SEARCH OVERLAY (FETCH ALL) */}
+      {/* 3. SLEEK SPOTLIGHT SEARCH MODAL */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] overflow-y-auto bg-blue-950/95 p-6 text-white backdrop-blur-3xl lg:p-24"
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md p-4 sm:p-6 md:p-16 flex items-start justify-center overflow-y-auto"
+            onClick={() => {
+              setIsSearchOpen(false);
+              setSearchQuery('');
+            }}
           >
-            <button
-              aria-label="Close search"
-              onClick={() => {
-                setIsSearchOpen(false);
-                setSearchQuery('');
-              }}
-              className="absolute right-6 top-6 rounded-full p-2 transition-transform hover:rotate-90 lg:right-12 lg:top-12"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-2xl bg-white text-slate-900 rounded-2xl shadow-2xl border border-slate-100 overflow-hidden mt-6 md:mt-12"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="h-8 w-8 lg:h-12 lg:w-12" />
-            </button>
-            <div className="mx-auto mt-14 max-w-5xl lg:mt-0">
-              <span className="text-blue-400 font-black uppercase tracking-[0.5em] text-[10px]">Portal Explorer</span>
-              <input 
-                autoFocus placeholder="FETCH SERVICE OR SECTION..." value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-b-8 border-white/5 py-6 text-3xl font-black italic uppercase tracking-tighter outline-none transition-all focus:border-blue-600 lg:py-8 lg:text-8xl"
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16">
-                {searchQuery && searchResults.map(result => (
-                  <button 
-                    key={result.id} onClick={() => handleNavigation(result.id)}
-                    className="flex items-center justify-between p-8 bg-white/5 hover:bg-blue-600 transition-all border border-white/10 group"
-                  >
-                    <span className="text-2xl font-black uppercase italic tracking-tighter">{t[result.key]}</span>
-                    <ArrowRight className="group-hover:translate-x-3 transition-transform" />
-                  </button>
-                ))}
+              {/* Search Bar Header */}
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-slate-50/50">
+                <Search className="h-5 w-5 text-blue-600 shrink-0" />
+                <input 
+                  autoFocus 
+                  placeholder="Search pages, services, or guidelines..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-base font-semibold text-slate-900 placeholder:text-slate-400 outline-none"
+                />
+                <button
+                  aria-label="Close search"
+                  onClick={() => {
+                    setIsSearchOpen(false);
+                    setSearchQuery('');
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors shrink-0"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-            </div>
+
+              {/* Search Results Body */}
+              <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
+                {searchQuery.trim() ? (
+                  searchResults.length > 0 ? (
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">Matching Results ({searchResults.length})</p>
+                      {searchResults.map((result) => (
+                        <button 
+                          key={result.id} 
+                          onClick={() => handleNavigation(result.id)}
+                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-50/80 rounded-xl transition-all border border-transparent hover:border-blue-100 group text-left"
+                        >
+                          <span className="text-sm font-bold text-slate-800 group-hover:text-blue-700">{t[result.key]}</span>
+                          <ArrowRight className="h-4 w-4 text-slate-400 group-hover:text-blue-700 group-hover:translate-x-1 transition-all" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 px-4">
+                      <p className="text-sm font-semibold text-slate-500">No matching pages or services found for "{searchQuery}"</p>
+                      <p className="text-xs text-slate-400 mt-1">Try searching for "Loans", "Membership", "Downloads", or "FAQs"</p>
+                    </div>
+                  )
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">Quick Links & Popular Sections</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {searchableLinks.slice(0, 6).map((link) => (
+                        <button 
+                          key={link.id} 
+                          onClick={() => handleNavigation(link.id)}
+                          className="flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-blue-50/80 rounded-xl border border-slate-100 hover:border-blue-100 transition-all text-left group"
+                        >
+                          <span className="text-xs font-bold text-slate-700 group-hover:text-blue-700">{t[link.key]}</span>
+                          <ArrowRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-700 group-hover:translate-x-1 transition-all" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>Zemen SACCO Search Explorer</span>
+                <span className="hidden sm:inline">Press <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] shadow-xs">ESC</kbd> to close</span>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

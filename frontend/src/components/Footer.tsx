@@ -123,6 +123,7 @@ export default function Footer({ onNavigate }: FooterProps) {
               {[
                 { name: t.home, id: 'home' },
                 { name: t.services, id: 'services' },
+                { name: t.apply, id: 'apply' },
                 { name: t.loans, id: 'loans' },
                 { name: t.news, id: 'news' },
                 { name: t.contact, id: 'contact' },

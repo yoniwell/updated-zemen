@@ -13,6 +13,7 @@ import { usePublicUiI18n } from '@/lib/uiI18n';
 import { MembershipFormInput, membershipSchema } from '@/schemas/membershipSchema';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FileText, ExternalLink } from 'lucide-react';
 
 const stepFields: Record<number, (keyof MembershipFormInput)[]> = {
   1: ['email', 'otpCode'],
@@ -727,20 +728,52 @@ export default function MembershipPortal() {
           )}
 
           {step === 4 && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <FileInput
-                label="Applicant Photo"
-                required
-                error={errorText('applicantPhotoName')}
-                value={getValues('applicantPhotoName')}
-                onPick={(file) => setUploadedFile('applicantPhotoName', file)}
-              />
-              <FileInput
-                label="Upload Filled Form Document"
-                error={errorText('filledFormName')}
-                value={getValues('filledFormName')}
-                onPick={(file) => setUploadedFile('filledFormName', file)}
-              />
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-950 text-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-blue-600 shrink-0" />
+                  <span>
+                    <strong>Need official forms or payment templates?</strong> Download official PDF application forms and guidelines from our <strong>Downloads Page</strong> before uploading.
+                  </span>
+                </div>
+                <a
+                  href="/downloads"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded shadow transition-all shrink-0"
+                >
+                  Open Downloads Page <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FileInput
+                  label="Applicant Photo"
+                  required
+                  error={errorText('applicantPhotoName')}
+                  value={getValues('applicantPhotoName')}
+                  onPick={(file) => setUploadedFile('applicantPhotoName', file)}
+                />
+                <FileInput
+                  label="Upload Filled Form Document"
+                  error={errorText('filledFormName')}
+                  value={getValues('filledFormName')}
+                  onPick={(file) => setUploadedFile('filledFormName', file)}
+                />
+                <FileInput
+                  label="Membership Payment Proof"
+                  required
+                  error={errorText('membershipPaymentProofName')}
+                  value={getValues('membershipPaymentProofName')}
+                  onPick={(file) => setUploadedFile('membershipPaymentProofName', file)}
+                />
+                <FileInput
+                  label="Saving Payment Proof"
+                  required
+                  error={errorText('savingProofName')}
+                  value={getValues('savingProofName')}
+                  onPick={(file) => setUploadedFile('savingProofName', file)}
+                />
+              </div>
             </div>
           )}
 

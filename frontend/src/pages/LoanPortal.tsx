@@ -14,6 +14,7 @@ import { usePublicUiI18n } from '@/lib/uiI18n';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FileText, ExternalLink } from 'lucide-react';
 
 const stepFields: Record<number, (keyof LoanFormInput)[]> = {
   1: ['email', 'otpCode'],
@@ -797,13 +798,31 @@ export default function LoanPortal() {
 
           {/* Step 4: Documents */}
           {step === 4 && (
-            <div className="grid gap-4 md:grid-cols-2">
-              <FileInput label={tPublicUi('loanApplicationLetter', 'Loan Application Letter')} required value={getValues('loanApplicationLetter')} onPick={(file) => setUploadedFile('loanApplicationLetter', file)} error={errorText('loanApplicationLetter')} />
-              <FileInput label={tPublicUi('loanRequestForm', 'Loan Request Form')} required value={getValues('loanRequestForm')} onPick={(file) => setUploadedFile('loanRequestForm', file)} error={errorText('loanRequestForm')} />
-              <FileInput label={tPublicUi('personalPhoto', 'Personal Photo')} required value={getValues('personalPhoto')} onPick={(file) => setUploadedFile('personalPhoto', file)} error={errorText('personalPhoto')} />
-              <FileInput label={tPublicUi('idFrontPhoto', 'ID Front Photo')} required value={getValues('idFrontPhoto')} onPick={(file) => setUploadedFile('idFrontPhoto', file)} error={errorText('idFrontPhoto')} />
-              <FileInput label={tPublicUi('idBackPhoto', 'ID Back Photo')} value={getValues('idBackPhoto')} onPick={(file) => setUploadedFile('idBackPhoto', file)} error={errorText('idBackPhoto')} />
-              <FileInput label={tPublicUi('marriageCertificate', 'Marital Status / Marriage Certificate')} required value={getValues('marriageCertificate')} onPick={(file) => setUploadedFile('marriageCertificate', file)} error={errorText('marriageCertificate')} />
+            <div className="space-y-4">
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-md text-blue-950 text-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-blue-600 shrink-0" />
+                  <span>
+                    <strong>Need official loan forms or guidelines?</strong> Download official loan request forms, policy terms, and collateral templates from our <strong>Downloads Page</strong> before uploading.
+                  </span>
+                </div>
+                <a
+                  href="/downloads"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded shadow transition-all shrink-0"
+                >
+                  Open Downloads Page <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FileInput label={tPublicUi('loanApplicationLetter', 'Loan Application Letter')} required value={getValues('loanApplicationLetter')} onPick={(file) => setUploadedFile('loanApplicationLetter', file)} error={errorText('loanApplicationLetter')} />
+                <FileInput label={tPublicUi('loanRequestForm', 'Loan Request Form')} required value={getValues('loanRequestForm')} onPick={(file) => setUploadedFile('loanRequestForm', file)} error={errorText('loanRequestForm')} />
+                <FileInput label={tPublicUi('personalPhoto', 'Personal Photo')} required value={getValues('personalPhoto')} onPick={(file) => setUploadedFile('personalPhoto', file)} error={errorText('personalPhoto')} />
+                <FileInput label={tPublicUi('idFrontPhoto', 'ID Front Photo')} required value={getValues('idFrontPhoto')} onPick={(file) => setUploadedFile('idFrontPhoto', file)} error={errorText('idFrontPhoto')} />
+                <FileInput label={tPublicUi('idBackPhoto', 'ID Back Photo')} value={getValues('idBackPhoto')} onPick={(file) => setUploadedFile('idBackPhoto', file)} error={errorText('idBackPhoto')} />
+                <FileInput label={tPublicUi('marriageCertificate', 'Marital Status / Marriage Certificate')} required value={getValues('marriageCertificate')} onPick={(file) => setUploadedFile('marriageCertificate', file)} error={errorText('marriageCertificate')} />
+              </div>
             </div>
           )}
 
