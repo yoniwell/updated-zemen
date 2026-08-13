@@ -7,6 +7,7 @@ dotenv.config();
 import app from './app';
 import { logger } from './common/utils/logger';
 import { prisma } from './database/prisma';
+import { prewarmSmtp } from './modules/notifications/services/notification.service';
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,6 +16,9 @@ async function startServer() {
     // Test database connection
     await prisma.$connect();
     logger.info('Successfully connected to the database');
+
+    // Pre-warm SMTP pool so the first OTP email sends without cold-start delay
+    void prewarmSmtp();
 
     const server = app.listen(PORT, () => {
       logger.info(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);

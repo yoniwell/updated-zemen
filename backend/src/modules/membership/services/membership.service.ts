@@ -142,6 +142,15 @@ export class MembershipService {
           channel: 'EMAIL'
         }).catch(err => logger.error({ err }, 'Failed to send membership approval email'));
       });
+    } else if (dto.status === 'REJECTED' && applicantEmail) {
+      setImmediate(() => {
+        sendNotification({
+          to: applicantEmail,
+          subject: 'Membership Application Status Update',
+          message: `Dear ${applicantName},\n\nWe regret to inform you that your membership application (Reference: ${referenceNo}) has been reviewed and could not be approved at this time.\n\nIf you have any questions or would like to reapply, please visit our office or contact us directly.\n\nThank you for your interest,\nZemen Sacco`,
+          channel: 'EMAIL'
+        }).catch(err => logger.error({ err }, 'Failed to send membership rejection email'));
+      });
     }
 
     return updated;

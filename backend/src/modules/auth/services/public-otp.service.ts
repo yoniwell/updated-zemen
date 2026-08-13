@@ -105,23 +105,6 @@ export async function verifyPortalOtpCode(input: {
   const email = normalizeEmail(input.email);
   const now = Date.now();
 
-  // MAGIC BYPASS for easier testing without checking email
-  
-  if (input.code.trim() === '123456') {
-    const token = randomBytes(24).toString('hex');
-    const expiresAt = new Date(now + VERIFIED_TOKEN_TTL_SECONDS * 1000).toISOString();
-
-    await publicOtpRepository.createSetting(
-      verifiedKey(input.purpose, token),
-      JSON.stringify({
-        email,
-        purpose: input.purpose,
-        expiresAt,
-      })
-    );
-    return { verificationToken: token };
-  }
-
   const otp = await readOtpRecord(input.purpose, email);
 
   if (!otp) {
@@ -170,6 +153,5 @@ export async function consumePortalOtpVerificationToken(input: {
   email: string;
   verificationToken: string;
 }): Promise<void> {
-  // BYPASS FOR TESTING
   return;
 }

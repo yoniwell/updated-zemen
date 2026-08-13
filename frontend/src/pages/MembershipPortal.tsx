@@ -13,7 +13,7 @@ import { usePublicUiI18n } from '@/lib/uiI18n';
 import { MembershipFormInput, membershipSchema } from '@/schemas/membershipSchema';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FileText, ExternalLink } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle2, Upload } from 'lucide-react';
 
 const stepFields: Record<number, (keyof MembershipFormInput)[]> = {
   1: ['email', 'otpCode'],
@@ -283,19 +283,6 @@ export default function MembershipPortal() {
     if (step === 1 && !otpVerified) {
       toast.error('Please verify your email address with the OTP code before proceeding');
       return;
-    }
-
-    if (step === 4) {
-      const missingDocs: string[] = [];
-      if (!uploadedFiles.idFrontPhoto) missingDocs.push('ID Photo / Passport');
-      if (!uploadedFiles.applicantPhoto) missingDocs.push('Applicant Photograph');
-      if (!uploadedFiles.membershipPaymentProof) missingDocs.push('Membership Payment Proof');
-      if (!uploadedFiles.savingPaymentProof) missingDocs.push('Saving Payment Proof');
-
-      if (missingDocs.length > 0) {
-        toast.error(`Please attach the required document(s): ${missingDocs.join(', ')}`);
-        return;
-      }
     }
 
     if (step === 5 && savingAmountValidationError) {
@@ -739,45 +726,13 @@ export default function MembershipPortal() {
                   value={getValues('filledFormName')}
                   onPick={(file) => setUploadedFile('filledFormName', file)}
                 />
-                <FileInput
-                  label="Membership Payment Proof"
-                  required
-                  error={errorText('membershipPaymentProofName')}
-                  value={getValues('membershipPaymentProofName')}
-                  onPick={(file) => setUploadedFile('membershipPaymentProofName', file)}
-                />
-                <FileInput
-                  label="Saving Payment Proof"
-                  required
-                  error={errorText('savingProofName')}
-                  value={getValues('savingProofName')}
-                  onPick={(file) => setUploadedFile('savingProofName', file)}
-                />
               </div>
             </div>
           )}
 
           {step === 5 && (
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Membership Payment Amount" error={errorText('membershipPaymentAmount')}>
-                <Input type="number" step="0.01" min="0" {...register('membershipPaymentAmount', { valueAsNumber: true })} />
-                {selectedSavingTypeObj?.membershipFee != null && (
-                  <p className="mt-1.5 text-xs font-bold text-blue-800 bg-blue-50/80 p-2 rounded-md border border-blue-200/80 flex items-center justify-between">
-                    <span>Required Fee ({selectedSavingTypeObj.name}):</span>
-                    <span className="font-extrabold text-blue-950">{selectedSavingTypeObj.membershipFee.toLocaleString()} ETB</span>
-                  </p>
-                )}
-              </Field>
-              <Field label="Membership Transaction / Reference Number" error={errorText('membershipTransactionRef')}>
-                <Input placeholder="Receipt / Ref No" {...register('membershipTransactionRef')} />
-              </Field>
-              <FileInput
-                label="Upload Payment Proof (Membership)"
-                error={errorText('membershipPaymentProofName')}
-                value={getValues('membershipPaymentProofName')}
-                onPick={(file) => setUploadedFile('membershipPaymentProofName', file)}
-              />
-
+              {/* --- Saving Type first --- */}
               <Field label="Saving Type" error={errorText('savingType')}>
                 <select className="h-11 w-full rounded-md border px-3" {...register('savingType')}>
                   <option value="">Select saving type</option>
@@ -786,6 +741,38 @@ export default function MembershipPortal() {
                   ))}
                 </select>
               </Field>
+
+              {/* --- Membership fee (read-only, auto-filled from saving type) --- */}
+              <Field label="Membership Payment Amount (ETB)" error={errorText('membershipPaymentAmount')}>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  readOnly
+                  className="bg-slate-100 cursor-not-allowed text-slate-600"
+                  {...register('membershipPaymentAmount', { valueAsNumber: true })}
+                />
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {selectedSavingTypeObj?.membershipFee != null
+                    ? `Auto-set from saving type: ${selectedSavingTypeObj.name} — ${selectedSavingTypeObj.membershipFee.toLocaleString()} ETB`
+                    : 'Select a saving type above to auto-fill this amount.'}
+                </p>
+              </Field>
+
+              {/* --- Membership transaction ref --- */}
+              <Field label="Membership Transaction / Reference Number" error={errorText('membershipTransactionRef')}>
+                <Input placeholder="Receipt / Ref No" {...register('membershipTransactionRef')} />
+              </Field>
+
+              {/* --- Membership payment proof --- */}
+              <FileInput
+                label="Upload Payment Proof (Membership)"
+                error={errorText('membershipPaymentProofName')}
+                value={getValues('membershipPaymentProofName')}
+                onPick={(file) => setUploadedFile('membershipPaymentProofName', file)}
+              />
+
+              {/* --- Saving payment amount --- */}
               <Field label="Saving Payment Amount" error={errorText('savingPaymentAmount')}>
                 <Input
                   type="number"
@@ -810,9 +797,13 @@ export default function MembershipPortal() {
                   })()
                 )}
               </Field>
-              <Field label="Transaction / Reference Number" error={errorText('savingTransactionRef')}>
+
+              {/* --- Saving transaction ref --- */}
+              <Field label="Saving Transaction / Reference Number" error={errorText('savingTransactionRef')}>
                 <Input {...register('savingTransactionRef')} />
               </Field>
+
+              {/* --- Saving payment proof --- */}
               <FileInput
                 label="Upload Saving Payment Proof"
                 error={errorText('savingProofName')}
@@ -820,6 +811,7 @@ export default function MembershipPortal() {
                 onPick={(file) => setUploadedFile('savingProofName', file)}
               />
 
+              {/* --- Preferred Branch --- */}
               <Field label="Preferred Branch" error={errorText('preferredBranch')}>
                 <select className="h-11 w-full rounded-md border px-3" {...register('preferredBranch')}>
                   <option value="" disabled>Select preferred branch</option>
@@ -948,7 +940,9 @@ function FileInput({
 }) {
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const [fileSizeError, setFileSizeError] = useState<string | null>(null);
-  
+  const [showPicker, setShowPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     setFileSizeError(null);
@@ -966,6 +960,7 @@ function FileInput({
       return;
     }
     
+    setShowPicker(false);
     onPick(file);
   };
   
@@ -974,13 +969,29 @@ function FileInput({
       <Label className="text-xs font-semibold text-slate-600">
         {label} {required ? '*' : ''} <span className="font-normal text-slate-500">(Max 5MB)</span>
       </Label>
-      <Input
-        type="file"
-        accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
-        onChange={handleFileChange}
-        className={fileSizeError ? 'border-red-300 focus:ring-red-200' : ''}
-      />
-      {value && <p className="text-xs text-emerald-700">✓ Selected: {value}</p>}
+      {value && !showPicker ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-300 bg-emerald-50/90 p-2.5 shadow-sm">
+          <div className="flex items-center gap-2 truncate text-emerald-950 font-bold text-xs">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Attached: {value}</span>
+          </div>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-400 bg-white px-2.5 py-1 text-xs font-extrabold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-xs shrink-0"
+            onClick={() => setShowPicker(true)}
+          >
+            <Upload className="h-3 w-3" /> Replace File
+          </button>
+        </div>
+      ) : (
+        <Input
+          ref={fileInputRef}
+          type="file"
+          accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf"
+          onChange={handleFileChange}
+          className={fileSizeError ? 'border-red-300 focus:ring-red-200' : ''}
+        />
+      )}
       {fileSizeError && <p className="text-xs text-red-600">{fileSizeError}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

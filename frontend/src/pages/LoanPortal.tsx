@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation } from 'react-router-dom';
@@ -14,7 +14,7 @@ import { usePublicUiI18n } from '@/lib/uiI18n';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, ExternalLink } from 'lucide-react';
+import { FileText, ExternalLink, CheckCircle2, Upload } from 'lucide-react';
 
 const stepFields: Record<number, (keyof LoanFormInput)[]> = {
   1: ['email', 'otpCode'],
@@ -100,9 +100,9 @@ export default function LoanPortal() {
     register,
     watch,
     setValue,
+    setError,
     trigger,
     getValues,
-    reset,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoanFormInput>({
@@ -346,18 +346,6 @@ export default function LoanPortal() {
       if (loanTenureValidationError) {
         setError('tenure', { type: 'manual', message: loanTenureValidationError });
         toast.error(loanTenureValidationError);
-        return;
-      }
-    }
-
-    if (step === 5) {
-      const missingDocs: string[] = [];
-      if (!uploadedFiles.idFrontPhoto) missingDocs.push('ID Photo / Passport');
-      if (!uploadedFiles.marriageCertificate) missingDocs.push('Marital Status / Marriage Certificate');
-      if (!uploadedFiles.collateralDocument) missingDocs.push('Collateral Ownership Document');
-
-      if (missingDocs.length > 0) {
-        toast.error(`Please attach the required document(s): ${missingDocs.join(', ')}`);
         return;
       }
     }
@@ -792,7 +780,7 @@ export default function LoanPortal() {
                 <FileInput label={tPublicUi('personalPhoto', 'Personal Photo')} required value={getValues('personalPhoto')} onPick={(file) => setUploadedFile('personalPhoto', file)} error={errorText('personalPhoto')} />
                 <FileInput label={tPublicUi('idFrontPhoto', 'ID Front Photo')} required value={getValues('idFrontPhoto')} onPick={(file) => setUploadedFile('idFrontPhoto', file)} error={errorText('idFrontPhoto')} />
                 <FileInput label={tPublicUi('idBackPhoto', 'ID Back Photo')} value={getValues('idBackPhoto')} onPick={(file) => setUploadedFile('idBackPhoto', file)} error={errorText('idBackPhoto')} />
-                <FileInput label={tPublicUi('marriageCertificate', 'Marital Status / Marriage Certificate')} required value={getValues('marriageCertificate')} onPick={(file) => setUploadedFile('marriageCertificate', file)} error={errorText('marriageCertificate')} />
+                <FileInput label={tPublicUi('marriageCertificate', 'Marital Status / Marriage Certificate')} required={values.maritalStatus === 'MARRIED'} value={getValues('marriageCertificate')} onPick={(file) => setUploadedFile('marriageCertificate', file)} error={errorText('marriageCertificate')} />
               </div>
             </div>
           )}
@@ -814,7 +802,7 @@ export default function LoanPortal() {
           {step === 6 && (
             <div className="grid gap-4">
 
-              <FileInput label={tPublicUi('businessPlan', 'Business Plan')} required value={getValues('businessPlan')} onPick={(file) => setUploadedFile('businessPlan', file)} error={errorText('businessPlan')} />
+              <FileInput label={tPublicUi('businessPlan', 'Business Plan')} value={getValues('businessPlan')} onPick={(file) => setUploadedFile('businessPlan', file)} error={errorText('businessPlan')} />
 
             </div>
           )}
@@ -922,6 +910,8 @@ function Field({ label, children, error }: { label: string; children: React.Reac
 function FileInput({ label, required, value, onPick, error }: { label: string; required?: boolean; value?: string; onPick: (file: File | null) => void; error?: string }) {
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const [fileSizeError, setFileSizeError] = useState<string | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -940,14 +930,30 @@ function FileInput({ label, required, value, onPick, error }: { label: string; r
       return;
     }
 
+    setShowPicker(false);
     onPick(file);
   };
 
   return (
     <div className="space-y-1">
       <Label className="text-xs font-semibold text-slate-600">{label} {required ? '*' : ''} <span className="font-normal text-slate-500">(Max 5MB)</span></Label>
-      <Input type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf" onChange={handleFileChange} className={fileSizeError ? 'border-red-300 focus:ring-red-200' : ''} />
-      {value && <p className="text-xs text-emerald-700">✓ Selected: {value}</p>}
+      {value && !showPicker ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-emerald-300 bg-emerald-50/90 p-2.5 shadow-sm">
+          <div className="flex items-center gap-2 truncate text-emerald-950 font-bold text-xs">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Attached: {value}</span>
+          </div>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-400 bg-white px-2.5 py-1 text-xs font-extrabold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-xs shrink-0"
+            onClick={() => setShowPicker(true)}
+          >
+            <Upload className="h-3 w-3" /> Replace File
+          </button>
+        </div>
+      ) : (
+        <Input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf" onChange={handleFileChange} className={fileSizeError ? 'border-red-300 focus:ring-red-200' : ''} />
+      )}
       {fileSizeError && <p className="text-xs text-red-600">{fileSizeError}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

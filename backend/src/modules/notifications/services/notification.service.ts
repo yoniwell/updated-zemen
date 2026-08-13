@@ -49,7 +49,7 @@ const getTransporter = (): nodemailer.Transporter | null => {
     rateLimit: 14,
     connectionTimeout: 5000,
     greetingTimeout: 5000,
-    socketTimeout: 5000,
+    socketTimeout: 10000,
     family: 4, // Force IPv4 to bypass 30-45s Node.js IPv6 DNS lookup delays
     auth: {
       user,
@@ -62,6 +62,28 @@ const getTransporter = (): nodemailer.Transporter | null => {
 
   return cachedTransporter;
 };
+
+/**
+ * Call this once on server startup to open the SMTP connection pool early,
+ * so the first OTP email is delivered without any cold-start delay.
+ */
+export async function prewarmSmtp(): Promise<void> {
+  if (!isEmailEnabled()) return;
+  const transporter = getTransporter();
+  if (!transporter) return;
+
+  try {
+    await transporter.verify();
+    logger.info('SMTP connection pre-warmed successfully');
+
+    // Keep the pool alive by sending a NOOP every 30 seconds
+    setInterval(() => {
+      (transporter as any).sendCommand?.('NOOP').catch(() => {});
+    }, 30_000);
+  } catch (err) {
+    logger.warn({ err }, 'SMTP pre-warm failed — emails will still be attempted on demand');
+  }
+}
 
 const buildFromAddress = (): string => {
   const fromName = process.env.EMAIL_FROM_NAME || 'Zemen SACCO';
