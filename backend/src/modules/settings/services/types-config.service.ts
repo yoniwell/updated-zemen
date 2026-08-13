@@ -10,11 +10,11 @@ export class TypesConfigService {
     });
   }
 
-  async createSavingType(data: { name: string; isActive?: boolean; minAmount?: number | null; maxAmount?: number | null }) {
+  async createSavingType(data: { name: string; isActive?: boolean; minAmount?: number | null; maxAmount?: number | null; membershipFee?: number | null }) {
     return prisma.savingTypeConfig.create({ data });
   }
 
-  async updateSavingType(id: string, data: { name?: string; isActive?: boolean; minAmount?: number | null; maxAmount?: number | null }) {
+  async updateSavingType(id: string, data: { name?: string; isActive?: boolean; minAmount?: number | null; maxAmount?: number | null; membershipFee?: number | null }) {
     return prisma.savingTypeConfig.update({ where: { id }, data });
   }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { adminFetch } from '@/lib/adminApi';
-import { Plus, Edit2, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import ConfirmDeleteModal from '@/components/admin/ConfirmDeleteModal';
 
 interface SavingType {
@@ -10,6 +10,7 @@ interface SavingType {
   isActive: boolean;
   minAmount?: number | null;
   maxAmount?: number | null;
+  membershipFee?: number | null;
 }
 
 const fmt = (n: number | null | undefined) => (n != null ? `${n.toLocaleString()} ETB` : '—');
@@ -27,6 +28,7 @@ export default function AdminSavingTypes() {
   const [isActive, setIsActive] = useState(true);
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
+  const [membershipFee, setMembershipFee] = useState('');
 
   const fetchSavingTypes = async () => {
     setLoading(true);
@@ -51,11 +53,13 @@ export default function AdminSavingTypes() {
       setIsActive(type.isActive);
       setMinAmount(type.minAmount != null ? String(type.minAmount) : '');
       setMaxAmount(type.maxAmount != null ? String(type.maxAmount) : '');
+      setMembershipFee(type.membershipFee != null ? String(type.membershipFee) : '500');
     } else {
       setName('');
       setIsActive(true);
       setMinAmount('');
       setMaxAmount('');
+      setMembershipFee('500');
     }
     setShowModal(true);
   };
@@ -74,6 +78,7 @@ export default function AdminSavingTypes() {
       isActive,
       minAmount: minAmount !== '' ? Number(minAmount) : null,
       maxAmount: maxAmount !== '' ? Number(maxAmount) : null,
+      membershipFee: membershipFee !== '' ? Number(membershipFee) : null,
     };
 
     try {
@@ -125,7 +130,7 @@ export default function AdminSavingTypes() {
       <div className="flex justify-between items-center mb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-900">Saving Types Settings</h1>
-          <p className="text-xs text-slate-500 mt-0.5">Configure system saving categories, deposit limits, and availability</p>
+          <p className="text-xs text-slate-500 mt-0.5">Configure system saving categories, deposit limits, membership fees, and availability</p>
         </div>
         <button
           onClick={() => openModal(null)}
@@ -145,6 +150,7 @@ export default function AdminSavingTypes() {
               <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Name</th>
+                  <th className="px-4 py-3 font-semibold">Membership Fee</th>
                   <th className="px-4 py-3 font-semibold">Min Amount</th>
                   <th className="px-4 py-3 font-semibold">Max Amount</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
@@ -154,12 +160,13 @@ export default function AdminSavingTypes() {
               <tbody>
                 {savingTypes.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">No saving types found. Create one to get started.</td>
+                    <td colSpan={6} className="py-8 text-center text-slate-500">No saving types found. Create one to get started.</td>
                   </tr>
                 ) : (
                   savingTypes.slice((page - 1) * 10, page * 10).map((type) => (
                     <tr key={type.id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => openModal(type)}>
                       <td className="px-4 py-3 font-bold text-slate-900">{type.name}</td>
+                      <td className="px-4 py-3 text-blue-900 font-extrabold">{fmt(type.membershipFee)}</td>
                       <td className="px-4 py-3 text-slate-600 font-medium">{fmt(type.minAmount)}</td>
                       <td className="px-4 py-3 text-slate-600 font-medium">{fmt(type.maxAmount)}</td>
                       <td className="px-4 py-3">
@@ -243,6 +250,19 @@ export default function AdminSavingTypes() {
                 />
               </div>
 
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-700">Required Membership Fee (ETB)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={membershipFee}
+                  onChange={(e) => setMembershipFee(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  placeholder="e.g. 500"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs font-bold text-slate-700">Min Amount (ETB)</label>
@@ -303,12 +323,13 @@ export default function AdminSavingTypes() {
 
       {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
-        open={!!deleteTargetId}
-        loading={deleting}
-        title="Delete Saving Type?"
-        description="Are you sure you want to delete this saving type? This action cannot be undone."
-        onConfirm={confirmDelete}
+        open={Boolean(deleteTargetId)}
+        isOpen={Boolean(deleteTargetId)}
         onClose={() => setDeleteTargetId(null)}
+        onConfirm={confirmDelete}
+        title="Delete Saving Type"
+        description="Are you sure you want to delete this saving type? This action cannot be undone."
+        loading={deleting}
       />
     </div>
   );

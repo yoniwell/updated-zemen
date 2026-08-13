@@ -440,13 +440,14 @@ enum ApplicationStatus {
 }
 
 model SavingTypeConfig {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  isActive    Boolean  @default(true)
-  minAmount   Float?   // minimum saving amount in ETB
-  maxAmount   Float?   // maximum saving amount in ETB
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(uuid())
+  name          String   @unique
+  isActive      Boolean  @default(true)
+  minAmount     Float?   // minimum saving amount in ETB
+  maxAmount     Float?   // maximum saving amount in ETB
+  membershipFee Float?   @default(500) // required membership fee amount in ETB
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("saving_type_configs")
 }

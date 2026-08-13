@@ -6,6 +6,7 @@ export const createTypeConfigSchema = z.object({
   minAmount: z.number().nullable().optional(),
   maxAmount: z.number().nullable().optional(),
   maxTenure: z.number().nullable().optional(),
+  membershipFee: z.number().nullable().optional(),
 });
 
 export const updateTypeConfigSchema = z.object({
@@ -14,4 +15,5 @@ export const updateTypeConfigSchema = z.object({
   minAmount: z.number().nullable().optional(),
   maxAmount: z.number().nullable().optional(),
   maxTenure: z.number().nullable().optional(),
+  membershipFee: z.number().nullable().optional(),
 });

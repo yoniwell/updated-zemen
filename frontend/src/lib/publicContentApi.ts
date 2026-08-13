@@ -269,6 +269,7 @@ export type ConfigSavingType = {
   isActive: boolean;
   minAmount?: number | null;
   maxAmount?: number | null;
+  membershipFee?: number | null;
 };
 
 export type ConfigLoanType = {

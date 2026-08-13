@@ -209,6 +209,19 @@ export default function MembershipPortal() {
     setOtpHint(null);
   }, [values.email]);
 
+  const selectedSavingTypeObj = useMemo(() => {
+    if (!values.savingType) return null;
+    return savingTypes.find((st) => 
+      st.name.toLowerCase().trim() === values.savingType.toLowerCase().trim() || st.id === values.savingType
+    ) || null;
+  }, [savingTypes, values.savingType]);
+
+  useEffect(() => {
+    if (selectedSavingTypeObj?.membershipFee != null) {
+      setValue('membershipPaymentAmount', selectedSavingTypeObj.membershipFee);
+    }
+  }, [selectedSavingTypeObj, setValue]);
+
   const formatSeconds = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remaining = seconds % 60;
@@ -241,10 +254,6 @@ export default function MembershipPortal() {
     ],
     [values]
   );
-
-  const selectedSavingTypeObj = useMemo(() => {
-    return savingTypes.find((st) => st.name === values.savingType || st.id === values.savingType);
-  }, [savingTypes, values.savingType]);
 
   const savingAmountValidationError = useMemo(() => {
     if (!selectedSavingTypeObj) return undefined;
@@ -751,7 +760,13 @@ export default function MembershipPortal() {
           {step === 5 && (
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Membership Payment Amount" error={errorText('membershipPaymentAmount')}>
-                <Input type="number" step="0.01" min="0" {...register('membershipPaymentAmount')} />
+                <Input type="number" step="0.01" min="0" {...register('membershipPaymentAmount', { valueAsNumber: true })} />
+                {selectedSavingTypeObj?.membershipFee != null && (
+                  <p className="mt-1.5 text-xs font-bold text-blue-800 bg-blue-50/80 p-2 rounded-md border border-blue-200/80 flex items-center justify-between">
+                    <span>Required Fee ({selectedSavingTypeObj.name}):</span>
+                    <span className="font-extrabold text-blue-950">{selectedSavingTypeObj.membershipFee.toLocaleString()} ETB</span>
+                  </p>
+                )}
               </Field>
               <Field label="Membership Transaction / Reference Number" error={errorText('membershipTransactionRef')}>
                 <Input placeholder="Receipt / Ref No" {...register('membershipTransactionRef')} />

@@ -2,7 +2,8 @@ import React from 'react';
 import { Trash2, AlertTriangle, X } from 'lucide-react';
 
 interface ConfirmDeleteModalProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   title?: string;
   description?: string;
   confirmText?: string;
@@ -14,6 +15,7 @@ interface ConfirmDeleteModalProps {
 
 export default function ConfirmDeleteModal({
   open,
+  isOpen,
   title = 'Delete Item?',
   description = 'Are you sure you want to delete this item? This action cannot be undone.',
   confirmText = 'Delete',
@@ -22,7 +24,8 @@ export default function ConfirmDeleteModal({
   onConfirm,
   onClose,
 }: ConfirmDeleteModalProps) {
-  if (!open) return null;
+  const isVisible = Boolean(open ?? isOpen);
+  if (!isVisible) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-all animate-in fade-in duration-200">

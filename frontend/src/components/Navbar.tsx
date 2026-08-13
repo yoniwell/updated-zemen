@@ -23,7 +23,6 @@ const standaloneLinks: NavLink[] = [
 ];
 
 const applicationsDropdownLinks: NavLink[] = [
-  { key: 'apply', id: 'apply' },
   { key: 'membership', id: 'membership' },
   { key: 'loans', id: 'loans' },
   { key: 'trackApplication', id: 'status' },
