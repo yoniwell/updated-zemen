@@ -174,7 +174,10 @@ export default function LoanPortal() {
         if (parsed.formValues) {
            reset({ ...parsed.formValues, otpCode: '' });
         }
-        if (parsed.step) setStep(parsed.step);
+        if (parsed.step) {
+          const targetStep = Math.min(parsed.step, 5);
+          setStep(targetStep);
+        }
         if (parsed.otpVerified) setOtpVerified(parsed.otpVerified);
         if (parsed.otpVerificationToken) setOtpVerificationToken(parsed.otpVerificationToken);
       } catch (e) {
@@ -371,6 +374,18 @@ export default function LoanPortal() {
       if (loanTenureValidationError) {
         setError('tenure', { type: 'manual', message: loanTenureValidationError });
         toast.error(loanTenureValidationError);
+        return;
+      }
+    }
+
+    if (step === 5) {
+      const missingDocs: string[] = [];
+      if (!uploadedFiles.idFrontPhoto) missingDocs.push('ID Photo / Passport');
+      if (!uploadedFiles.marriageCertificate) missingDocs.push('Marital Status / Marriage Certificate');
+      if (!uploadedFiles.collateralDocument) missingDocs.push('Collateral Ownership Document');
+
+      if (missingDocs.length > 0) {
+        toast.error(`Please attach the required document(s): ${missingDocs.join(', ')}`);
         return;
       }
     }

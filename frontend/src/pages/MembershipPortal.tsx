@@ -134,9 +134,12 @@ export default function MembershipPortal() {
           return;
         }
         if (parsed.formValues) {
-           reset({ ...initialValues, ...parsed.formValues, otpCode: '' });
+          reset({ ...initialValues, ...parsed.formValues, otpCode: '' });
         }
-        if (parsed.step) setStep(parsed.step);
+        if (parsed.step) {
+          const targetStep = Math.min(parsed.step, 4);
+          setStep(targetStep);
+        }
         if (parsed.otpVerified) setOtpVerified(parsed.otpVerified);
         if (parsed.otpVerificationToken) setOtpVerificationToken(parsed.otpVerificationToken);
       } catch (e) {
@@ -299,6 +302,19 @@ export default function MembershipPortal() {
     if (step === 1 && !otpVerified) {
       toast.error('Please verify your email address with the OTP code before proceeding');
       return;
+    }
+
+    if (step === 4) {
+      const missingDocs: string[] = [];
+      if (!uploadedFiles.idFrontPhoto) missingDocs.push('ID Photo / Passport');
+      if (!uploadedFiles.applicantPhoto) missingDocs.push('Applicant Photograph');
+      if (!uploadedFiles.membershipPaymentProof) missingDocs.push('Membership Payment Proof');
+      if (!uploadedFiles.savingPaymentProof) missingDocs.push('Saving Payment Proof');
+
+      if (missingDocs.length > 0) {
+        toast.error(`Please attach the required document(s): ${missingDocs.join(', ')}`);
+        return;
+      }
     }
 
     if (step === 5 && savingAmountValidationError) {
