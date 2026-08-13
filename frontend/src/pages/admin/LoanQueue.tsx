@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { adminFetch } from '@/lib/adminApi';
+import { getAdminUser } from '@/lib/adminAuth';
 import { LOAN_QUEUE_STATUS_OPTIONS } from '@/lib/adminOptions';
 import { useAdminLoanTypes } from '@/hooks/useAdminLoanTypes';
 import { useAdminBranches } from '@/hooks/useAdminBranches';
@@ -8,9 +9,7 @@ import StatusBadge from '@/components/admin/StatusBadge';
 import { useAdminI18n } from '@/lib/uiI18n';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { SelectTrigger, SelectValue, SelectContent, SelectItem } from '@radix-ui/react-select';
 import { Download, Search, AlertTriangle, Info } from 'lucide-react';
-import { Select } from '@/components/ui/select';
 import { useNavigate, Link } from 'react-router-dom';
 
 type LoanQueueApplication = {
@@ -86,10 +85,14 @@ export default function LoanQueue() {
   const navigate = useNavigate();
   const { branches } = useAdminBranches();
   const { loanTypeNames } = useAdminLoanTypes();
+  const currentUser = useMemo(() => getAdminUser(), []);
+  const isBranchManager = currentUser?.role === 'BRANCH_MANAGER';
+  const managerBranchId = currentUser?.branch?.id || '';
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [productFilter, setProductFilter] = useState('all');
-  const [branchFilter, setBranchFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState<string>(isBranchManager ? managerBranchId : 'all');
   const [page, setPage] = useState(1);
   const limit = 20;
   const [sortBy] = useState<'createdAt' | 'updatedAt' | 'submittedAt' | 'status' | 'referenceNo' | 'amount' | 'loanType'>('createdAt');
@@ -100,6 +103,12 @@ export default function LoanQueue() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isBranchManager && managerBranchId) {
+      setBranchFilter(managerBranchId);
+    }
+  }, [isBranchManager, managerBranchId]);
 
   const loadQueue = useCallback(async () => {
     setLoading(true);
@@ -301,16 +310,18 @@ export default function LoanQueue() {
           ))}
         </select>
 
-        <select 
-          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
-          value={branchFilter} 
-          onChange={(event) => setBranchFilter(event.target.value)}
-        >
-          <option value="all">{t('adminAllBranches', 'All Branches')}</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>{branch.name}</option>
-          ))}
-        </select>
+        {!isBranchManager && (
+          <select 
+            className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
+            value={branchFilter} 
+            onChange={(event) => setBranchFilter(event.target.value)}
+          >
+            <option value="all">{t('adminAllBranches', 'All Branches')}</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>{branch.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {loading ? <p className="rounded-md p-4 text-sm text-slate-600">{t('adminLoadingLoanQueue', 'Loading loan queue...')}</p> : null}

@@ -19,7 +19,7 @@ const stepFields: Record<number, (keyof MembershipFormInput)[]> = {
   2: ['phone', 'firstName', 'fathersName', 'grandfathersName'],
   3: ['idType', 'idNumber', 'idFrontName', 'idBackName'],
   4: ['applicantPhotoName', 'filledFormName'],
-  5: ['membershipPaymentAmount', 'membershipPaymentProofName', 'savingType', 'savingPaymentAmount', 'savingTransactionRef', 'savingProofName', 'preferredBranch', 'termsAccepted'],
+  5: ['membershipPaymentAmount', 'membershipTransactionRef', 'membershipPaymentProofName', 'savingType', 'savingPaymentAmount', 'savingTransactionRef', 'savingProofName', 'preferredBranch', 'termsAccepted'],
 };
 
 const initialValues: Partial<MembershipFormInput> = {
@@ -36,6 +36,7 @@ const initialValues: Partial<MembershipFormInput> = {
   applicantPhotoName: '',
   filledFormName: '',
   membershipPaymentAmount: undefined,
+  membershipTransactionRef: '',
   membershipPaymentProofName: '',
   savingType: undefined,
   savingPaymentAmount: undefined,
@@ -102,6 +103,7 @@ export default function MembershipPortal() {
   const [otpLockedOut, setOtpLockedOut] = useState(false);
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [branchOptions, setBranchOptions] = useState<MembershipBranchOption[]>([]);
+  const [createdApp, setCreatedApp] = useState<MembershipSubmitResponse['application'] | null>(null);
 
   const {
     register,
@@ -120,12 +122,17 @@ export default function MembershipPortal() {
 
   const values = watch();
 
-  // Load saved session state
+  // Load saved session state (expires after 24h)
   useEffect(() => {
     const saved = localStorage.getItem('membership_portal_state');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        const isExpired = parsed.timestamp && Date.now() - parsed.timestamp > 86400000;
+        if (isExpired) {
+          localStorage.removeItem('membership_portal_state');
+          return;
+        }
         if (parsed.formValues) {
            reset({ ...initialValues, ...parsed.formValues, otpCode: '' });
         }
@@ -138,44 +145,21 @@ export default function MembershipPortal() {
     }
   }, [reset]);
 
-  // Fetch dynamic data
-  useEffect(() => {
-    if (step === 5) {
-      fetchPublicBranches().then((data) => {
-        setBranchOptions(data.branches);
-      }).catch((err) => {
-        console.error('Failed to fetch branches:', err);
-      });
-
-      fetchConfigSavingTypes().then((data) => {
-        setSavingTypes(data);
-      }).catch((err) => {
-        console.error('Failed to fetch saving types:', err);
-      });
-    }
-  }, [step]);
-
-  // Save session state on change
-  useEffect(() => {
-    const toSave = {
-      formValues: { ...values, otpCode: '' }, // Never persist the OTP code itself
-      step,
-      otpVerified,
-      otpVerificationToken
-    };
-    localStorage.setItem('membership_portal_state', JSON.stringify(toSave));
-  }, [values, step, otpVerified, otpVerificationToken]);
-
+  // Load public branches & saving types once on mount
   useEffect(() => {
     const controller = new AbortController();
 
-    const loadBranches = async () => {
+    const loadPublicData = async () => {
       try {
-        const payload = await fetchPublicBranches();
-        const branches = Array.isArray(payload.branches)
+        const [branchData, savingData] = await Promise.all([
+          fetchPublicBranches().catch(() => ({ branches: [] })),
+          fetchConfigSavingTypes().catch(() => []),
+        ]);
+
+        const branches = Array.isArray(branchData.branches)
           ? Array.from(
             new Map(
-              payload.branches
+              branchData.branches
                 .map((branch) => ({ id: branch.id.trim(), name: branch.name.trim() }))
                 .filter((branch) => branch.id || branch.name)
                 .map((branch) => [branch.id || branch.name, branch] as const)
@@ -183,23 +167,38 @@ export default function MembershipPortal() {
           )
           : [];
 
-        if (branches.length === 0) return;
+        if (branches.length > 0) {
+          setBranchOptions(branches);
+          const currentPreferredBranch = getValues('preferredBranch');
+          if (!currentPreferredBranch || !branches.some((branch) => branch.name === currentPreferredBranch)) {
+            setValue('preferredBranch', '');
+          }
+        }
 
-        setBranchOptions(branches);
-
-        const currentPreferredBranch = getValues('preferredBranch');
-        if (!currentPreferredBranch || !branches.some((branch) => branch.name === currentPreferredBranch)) {
-          setValue('preferredBranch', '');
+        if (Array.isArray(savingData)) {
+          setSavingTypes(savingData);
         }
       } catch (error) {
         if (error instanceof DOMException && error.name === 'AbortError') return;
       }
     };
 
-    void loadBranches();
+    void loadPublicData();
 
     return () => controller.abort();
   }, [getValues, setValue]);
+
+  // Save session state on change
+  useEffect(() => {
+    const toSave = {
+      formValues: { ...values, otpCode: '' }, // Never persist the OTP code itself
+      step,
+      otpVerified,
+      otpVerificationToken,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem('membership_portal_state', JSON.stringify(toSave));
+  }, [values, step, otpVerified, otpVerificationToken]);
 
   useEffect(() => {
     if (resendInSeconds <= 0) {
@@ -245,7 +244,7 @@ export default function MembershipPortal() {
     tPublicUi('startAndContact', 'Start & Contact'),
     tPublicUi('personalInformation', 'Personal Information'),
     tPublicUi('kycDocuments', 'KYC Documents'),
-    tPublicUi('employment', 'Employment'),
+    tPublicUi('photosAndDocuments', 'Photos & Documents'),
     tPublicUi('preferencesAndConsent', 'Preferences & Consent'),
     tPublicUi('reviewAndSubmit', 'Review & Submit'),
   ];
@@ -261,6 +260,7 @@ export default function MembershipPortal() {
       ['ID Number', values.idNumber],
       ['Preferred Branch', values.preferredBranch || '-'],
       ['Membership Payment', Number(values.membershipPaymentAmount ?? 0)],
+      ['Membership Payment Ref', values.membershipTransactionRef || '-'],
       ['Saving Type', values.savingType || '-'],
       ['Saving Payment', Number(values.savingPaymentAmount ?? 0)],
     ],
@@ -318,48 +318,56 @@ export default function MembershipPortal() {
   };
 
   const onSubmit = async (data: MembershipFormInput) => {
-    const selectedBranchObj = branchOptions.find((b) => b.id === data.preferredBranch || b.name === data.preferredBranch);
-    const resolvedBranchId = selectedBranchObj?.id || (typeof data.preferredBranch === 'string' && data.preferredBranch.trim() !== '' ? data.preferredBranch : undefined);
-    const resolvedBranchName = selectedBranchObj?.name || (typeof data.preferredBranch === 'string' && data.preferredBranch.trim() !== '' ? data.preferredBranch : undefined);
+    let appRecord = createdApp;
 
-    const payload = {
-      firstName: data.firstName,
-      fathersName: data.fathersName,
-      grandfathersName: data.grandfathersName,
-      phone: data.phone,
-      email: data.email || undefined,
-      idType: data.idType,
-      idNumber: data.idNumber,
-      branchId: resolvedBranchId,
-      preferredBranch: resolvedBranchName,
-      membershipPaymentAmount: data.membershipPaymentAmount,
-      savingType: data.savingType || undefined,
-      savingPaymentAmount: data.savingPaymentAmount,
-      savingTransactionRef: data.savingTransactionRef || undefined,
-      termsAccepted: data.termsAccepted,
-      otpVerificationToken: otpVerificationToken || sessionStorage.getItem('membership_otp_token') || '',
-    };
+    if (!appRecord) {
+      const selectedBranchObj = branchOptions.find((b) => b.id === data.preferredBranch || b.name === data.preferredBranch);
+      const resolvedBranchId = selectedBranchObj?.id || (typeof data.preferredBranch === 'string' && data.preferredBranch.trim() !== '' ? data.preferredBranch : undefined);
+      const resolvedBranchName = selectedBranchObj?.name || (typeof data.preferredBranch === 'string' && data.preferredBranch.trim() !== '' ? data.preferredBranch : undefined);
 
-    const response = await fetchWithTimeout(`${baseUrl}/api/membership`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      timeoutMs: 120000,
-    });
+      const payload = {
+        firstName: data.firstName,
+        fathersName: data.fathersName,
+        grandfathersName: data.grandfathersName,
+        phone: data.phone,
+        email: data.email || undefined,
+        idType: data.idType,
+        idNumber: data.idNumber,
+        branchId: resolvedBranchId,
+        preferredBranch: resolvedBranchName,
+        membershipPaymentAmount: data.membershipPaymentAmount,
+        membershipTransactionRef: data.membershipTransactionRef || undefined,
+        savingType: data.savingType || undefined,
+        savingPaymentAmount: data.savingPaymentAmount,
+        savingTransactionRef: data.savingTransactionRef || undefined,
+        termsAccepted: data.termsAccepted,
+        otpVerificationToken: otpVerificationToken || sessionStorage.getItem('membership_otp_token') || '',
+      };
 
-    const responseText = await response.text();
-    let result: MembershipSubmitResponse | { error?: string } = { error: 'Failed to submit membership application' };
-    if (responseText) {
-      try {
-        const parsed = JSON.parse(responseText);
-        result = ('success' in parsed && 'data' in parsed) ? parsed.data : parsed;
-      } catch {
-        result = { error: 'Unexpected response from server' };
+      const response = await fetchWithTimeout(`${baseUrl}/api/membership`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        timeoutMs: 120000,
+      });
+
+      const responseText = await response.text();
+      let result: MembershipSubmitResponse | { error?: string } = { error: 'Failed to submit membership application' };
+      if (responseText) {
+        try {
+          const parsed = JSON.parse(responseText);
+          result = ('success' in parsed && 'data' in parsed) ? parsed.data : parsed;
+        } catch {
+          result = { error: 'Unexpected response from server' };
+        }
       }
-    }
 
-    if (!response.ok || !('application' in result)) {
-      throw new Error(publicErrorMessages.submitApplication);
+      if (!response.ok || !('application' in result)) {
+        throw new Error(publicErrorMessages.submitApplication);
+      }
+
+      appRecord = result.application;
+      setCreatedApp(appRecord);
     }
 
     const applicantName = `${data.firstName} ${data.fathersName || ''} ${data.grandfathersName || ''}`.trim();
@@ -389,28 +397,30 @@ export default function MembershipPortal() {
 
     await Promise.all(uploads.map(async (upload) => {
       try {
-        await uploadMembershipDocument(result.application.id, upload.file, upload.category);
+        await uploadMembershipDocument(appRecord!.id, upload.file, upload.category);
       } catch {
         failedUploads.push(upload.label);
       }
     }));
 
-    setSubmittedRef(result.application.referenceNo);
-    setSubmittedName(applicantName);
     toast.dismiss('submit-toast');
     if (failedUploads.length > 0) {
       toast.warning(`Application submitted, but failed to upload: ${failedUploads.join(', ')}`);
       return;
     }
 
+    setSubmittedRef(appRecord.referenceNo);
+    setSubmittedName(applicantName);
+
+    localStorage.removeItem('membership_portal_state');
+    sessionStorage.removeItem('membership_otp_token');
+
     if (uploads.length > 0) {
       toast.success(`Application submitted and uploaded: ${uploads.map((upload) => upload.label).join(', ')}`);
-      sessionStorage.removeItem('membership_portal_state');
       return;
     }
 
     toast.success('Membership application submitted successfully');
-    sessionStorage.removeItem('membership_portal_state');
   };
 
   const onInvalidSubmit = (formErrors: FieldErrors<MembershipFormInput>) => {
@@ -595,26 +605,49 @@ export default function MembershipPortal() {
           {step === 1 && (
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Email" error={errorText('email')}>
-                <Input type="email" placeholder="you@example.com" {...register('email')} />
+                <div className="flex gap-2">
+                  <Input type="email" placeholder="you@example.com" readOnly={otpVerified} className={otpVerified ? 'bg-slate-100 font-semibold text-slate-700 cursor-not-allowed' : ''} {...register('email')} />
+                  {otpVerified && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs font-bold shrink-0"
+                      onClick={() => {
+                        setOtpVerified(false);
+                        setOtpSent(false);
+                        setOtpVerificationToken(null);
+                        setValue('otpCode', '');
+                        sessionStorage.removeItem('membership_otp_token');
+                      }}
+                    >
+                      Change Email
+                    </Button>
+                  )}
+                </div>
               </Field>
               <Field label="OTP Code" error={errorText('otpCode')}>
-                <Input placeholder="000000" maxLength={8} {...register('otpCode')} />
+                <Input placeholder="000000" maxLength={8} disabled={otpVerified} {...register('otpCode')} />
               </Field>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-                <Button type="button" onClick={() => void sendOtpCode(false)} disabled={otpBusy || resendInSeconds > 0}>
-                  {otpBusy ? 'Please wait...' : 'Send Code'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void sendOtpCode(true)} disabled={otpBusy || resendInSeconds > 0}>
-                  Resend Code {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
-                  Verify OTP
-                </Button>
-                <span className={`text-sm font-semibold ${otpVerified ? 'text-emerald-700' : 'text-slate-500'}`}>
-                  {otpVerified ? 'Verified' : 'Not verified'}
+                {!otpVerified && (
+                  <>
+                    <Button type="button" onClick={() => void sendOtpCode(false)} disabled={otpBusy || resendInSeconds > 0}>
+                      {otpBusy ? 'Please wait...' : 'Send Code'}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => void sendOtpCode(true)} disabled={otpBusy || resendInSeconds > 0}>
+                      Resend Code {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
+                      Verify OTP
+                    </Button>
+                  </>
+                )}
+                <span className={`text-sm font-bold ${otpVerified ? 'text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200' : 'text-slate-500'}`}>
+                  {otpVerified ? '✓ Email Verified' : 'Not verified'}
                 </span>
               </div>
-              {otpSent && otpExpiresInSeconds > 0 && (
+              {otpSent && !otpVerified && otpExpiresInSeconds > 0 && (
                 <p className="md:col-span-2 text-xs font-semibold text-slate-600">
                   Code expires in {formatSeconds(otpExpiresInSeconds)}
                 </p>
@@ -698,7 +731,10 @@ export default function MembershipPortal() {
           {step === 5 && (
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Membership Payment Amount" error={errorText('membershipPaymentAmount')}>
-                <Input type="number" step="0.01" {...register('membershipPaymentAmount')} />
+                <Input type="number" step="0.01" min="0" {...register('membershipPaymentAmount')} />
+              </Field>
+              <Field label="Membership Transaction / Reference Number" error={errorText('membershipTransactionRef')}>
+                <Input placeholder="Receipt / Ref No" {...register('membershipTransactionRef')} />
               </Field>
               <FileInput
                 label="Upload Payment Proof (Membership)"
@@ -891,6 +927,7 @@ function FileInput({
     if (file.size > MAX_FILE_SIZE) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       setFileSizeError(`File size (${sizeMB}MB) exceeds maximum allowed size of 5MB`);
+      event.target.value = '';
       onPick(null);
       return;
     }

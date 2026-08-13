@@ -59,6 +59,7 @@ model MembershipApplication {
   createdAt               DateTime          @default(now())
   updatedAt               DateTime          @updatedAt
   membershipPaymentAmount Float?
+  membershipTransactionRef String?
   savingPaymentAmount     Float?
   savingTransactionRef    String?
   savingType              String?

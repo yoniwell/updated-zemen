@@ -180,27 +180,31 @@ export default function NewsManager() {
         <p className="rounded-md p-4 text-sm text-muted-foreground">Loading news articles...</p>
       ) : (
         <div className="bg-white rounded-xl shadow overflow-hidden">
-          {filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-slate-400">
-              <AlertCircle className="w-6 h-6 mb-2 text-slate-300" />
-              <p className="text-sm font-medium">No matching articles found.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left whitespace-nowrap text-sm">
-                <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap text-sm">
+              <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Image</th>
+                  <th className="px-4 py-3 font-semibold">Title</th>
+                  <th className="px-4 py-3 font-semibold">Excerpt</th>
+                  <th className="px-4 py-3 font-semibold">Category</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Date</th>
+                  <th className="px-4 py-3 font-semibold text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedItems.length === 0 ? (
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Image</th>
-                    <th className="px-4 py-3 font-semibold">Title</th>
-                    <th className="px-4 py-3 font-semibold">Excerpt</th>
-                    <th className="px-4 py-3 font-semibold">Category</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">Date</th>
-                    <th className="px-4 py-3 font-semibold text-center">Actions</th>
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                      <div className="flex flex-col items-center justify-center py-4 text-slate-400">
+                        <AlertCircle className="w-6 h-6 mb-2 text-slate-300" />
+                        <p className="text-sm font-medium">No news articles found.</p>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {paginatedItems.map(item => (
+                ) : (
+                  paginatedItems.map(item => (
                     <tr key={item.id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => openEdit(item)}>
                       <td className="px-4 py-3">
                         {item.imageUrl ? (
@@ -229,11 +233,11 @@ export default function NewsManager() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination Footer */}
           <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between bg-slate-50/50 gap-4 border-t border-slate-100">

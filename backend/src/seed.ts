@@ -4,174 +4,235 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting comprehensive database seed...');
+  console.log('🌱 Starting clean database seed (Core System & Product Configs only)...');
 
-  // 1. Create default branches
-  const branches = await Promise.all([
-    prisma.branch.upsert({
-      where: { code: 'BR-001' },
-      update: {},
-      create: {
-        name: 'Addis Ababa HQ',
-        code: 'BR-001',
-        location: 'Bole Medhanialem, Addis Ababa',
-        manager: 'Aisha Hassan',
-        status: 'OPERATIONAL',
-      },
-    }),
-    prisma.branch.upsert({
-      where: { code: 'BR-002' },
-      update: {},
-      create: {
-        name: 'Mekelle Head Office',
-        code: 'BR-002',
-        location: 'Adi Hawesi, In front of IOM',
-        manager: 'Dr. Silas Omari',
-        status: 'OPERATIONAL',
-      },
-    }),
-  ]);
-  console.log(`✅ Seeded ${branches.length} branches`);
+  // Clean sample data from applications & CMS content tables
+  console.log('🧹 Cleaning sample application and CMS content records...');
+  await prisma.document.deleteMany();
+  await prisma.applicationNote.deleteMany();
+  await prisma.workflowHistory.deleteMany();
+  await prisma.membershipApplication.deleteMany();
+  await prisma.loanApplication.deleteMany();
+  await prisma.applicant.deleteMany();
+  await prisma.downloadFile.deleteMany();
+  await prisma.downloadCategory.deleteMany();
+  await prisma.cmsService.deleteMany();
+  await prisma.cmsSaving.deleteMany();
+  await prisma.cmsLoanProduct.deleteMany();
+  await prisma.cmsAnnouncement.deleteMany();
+  await prisma.cmsFaq.deleteMany();
+  await prisma.news.deleteMany();
+  await prisma.auditLog.deleteMany();
 
-  // 2. Create Super Admin user
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const admin = await prisma.adminUser.upsert({
-    where: { email: 'admin@zemen.com' },
-    update: {},
-    create: {
-      name: 'System Administrator',
-      email: 'admin@zemen.com',
-      passwordHash: adminPassword,
-      role: 'SUPER_ADMIN',
-      isActive: true,
-      branchId: branches[0].id,
+  // ==========================================
+  // 1. SEED BRANCHES
+  // ==========================================
+  console.log('📍 Seeding Operational Branches...');
+  const branchesData = [
+    {
+      code: 'BR-001',
+      name: 'Addis Ababa HQ',
+      location: 'Bole Medhanialem, Addis Ababa',
+      manager: 'Aisha Hassan',
+      status: 'OPERATIONAL',
+      phonePrimary: '+251 11 661 2345',
+      phoneSecondary: '+251 91 122 3344',
+      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM, Sat: 8:00 AM - 12:00 PM',
+      published: true,
     },
-  });
-
-  const officerPassword = await bcrypt.hash('officer123', 10);
-  const loanOfficer = await prisma.adminUser.upsert({
-    where: { email: 'officer@zemen.com' },
-    update: {},
-    create: {
-      name: 'Elena Aris',
-      email: 'officer@zemen.com',
-      passwordHash: officerPassword,
-      role: 'OFFICER',
-      isActive: true,
-      branchId: branches[1].id,
+    {
+      code: 'BR-002',
+      name: 'Mekelle Head Office',
+      location: 'Adi Hawesi, In front of IOM, Mekelle',
+      manager: 'Dr. Silas Omari',
+      status: 'OPERATIONAL',
+      phonePrimary: '+251 34 440 5678',
+      phoneSecondary: '+251 91 433 2211',
+      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM, Sat: 8:00 AM - 12:00 PM',
+      published: true,
     },
-  });
-
-  console.log(`✅ Seeded Admin users (${admin.email}, ${loanOfficer.email})`);
-
-  // 3. Seed Saving Types Config
-  const savingTypes = [
-    { name: 'Regular Saving', minAmount: 100, maxAmount: 1000000 },
-    { name: "Children's Saving", minAmount: 50, maxAmount: 500000 },
-    { name: 'Time Deposit Saving', minAmount: 5000, maxAmount: 10000000 },
-    { name: 'Non-Interest Bearing Saving', minAmount: 100, maxAmount: 5000000 },
-    { name: 'Diaspora Saving', minAmount: 500, maxAmount: 10000000 },
-    { name: 'Vehicle & House Saving', minAmount: 1000, maxAmount: 5000000 },
-    { name: 'Choice Saving', minAmount: 100, maxAmount: 2000000 },
-    { name: 'Youth Saving', minAmount: 50, maxAmount: 300000 },
-    { name: 'Senior Saving', minAmount: 100, maxAmount: 1000000 },
+    {
+      code: 'BR-003',
+      name: 'Hawassa Main Branch',
+      location: 'Piazza Square, Near Main Post Office, Hawassa',
+      manager: 'Bethlehem Tadesse',
+      status: 'OPERATIONAL',
+      phonePrimary: '+251 46 220 9988',
+      phoneSecondary: '+251 92 211 4455',
+      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM',
+      published: true,
+    },
+    {
+      code: 'BR-004',
+      name: 'Bahir Dar Branch',
+      location: 'Kebele 04, Next to Grand Hotel, Bahir Dar',
+      manager: 'Yonas Gebre',
+      status: 'OPERATIONAL',
+      phonePrimary: '+251 58 226 7711',
+      phoneSecondary: '+251 91 877 6655',
+      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM',
+      published: true,
+    },
+    {
+      code: 'BR-005',
+      name: 'Dire Dawa Branch',
+      location: 'Kezira Business District, Dire Dawa',
+      manager: 'Mustafa Ahmed',
+      status: 'OPERATIONAL',
+      phonePrimary: '+251 25 111 4433',
+      phoneSecondary: '+251 93 344 5566',
+      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM',
+      published: true,
+    },
   ];
 
-  for (const st of savingTypes) {
+  const branches = [];
+  for (const b of branchesData) {
+    const branch = await prisma.branch.upsert({
+      where: { code: b.code },
+      update: { name: b.name, location: b.location, manager: b.manager, status: b.status, published: b.published },
+      create: b,
+    });
+    branches.push(branch);
+  }
+  console.log(`✅ Seeded ${branches.length} operational branches`);
+
+  // ==========================================
+  // 2. SEED ADMIN USERS (ROLES & ACCOUNTS)
+  // ==========================================
+  console.log('👥 Seeding Admin Users & Staff Accounts...');
+  const commonPassword = await bcrypt.hash('admin123', 10);
+  const bmPassword = await bcrypt.hash('bm123456', 10);
+  const officerPassword = await bcrypt.hash('officer123', 10);
+
+  const usersData = [
+    {
+      name: 'System Administrator',
+      email: 'admin@zemen.com',
+      passwordHash: commonPassword,
+      role: 'SUPER_ADMIN' as const,
+      branchId: branches[0].id,
+      isActive: true,
+    },
+    {
+      name: 'Addis Branch Manager',
+      email: 'bm.addis@zemen.com',
+      passwordHash: bmPassword,
+      role: 'BRANCH_MANAGER' as const,
+      branchId: branches[0].id,
+      isActive: true,
+    },
+    {
+      name: 'Mekelle Branch Manager',
+      email: 'bm.mekelle@zemen.com',
+      passwordHash: bmPassword,
+      role: 'BRANCH_MANAGER' as const,
+      branchId: branches[1].id,
+      isActive: true,
+    },
+    {
+      name: 'Elena Aris (Senior Credit Officer)',
+      email: 'officer@zemen.com',
+      passwordHash: officerPassword,
+      role: 'OFFICER' as const,
+      branchId: branches[0].id,
+      isActive: true,
+    },
+    {
+      name: 'Tewodros Kassahun (Content Manager)',
+      email: 'content@zemen.com',
+      passwordHash: commonPassword,
+      role: 'CONTENT_MANAGER' as const,
+      branchId: branches[0].id,
+      isActive: true,
+    },
+  ];
+
+  const adminUsers = [];
+  for (const u of usersData) {
+    const user = await prisma.adminUser.upsert({
+      where: { email: u.email },
+      update: { name: u.name, role: u.role, branchId: u.branchId, isActive: u.isActive },
+      create: u,
+    });
+    adminUsers.push(user);
+  }
+  console.log(`✅ Seeded ${adminUsers.length} admin & staff user accounts`);
+
+  // ==========================================
+  // 3. SEED SYSTEM SETTINGS & CONFIGS
+  // ==========================================
+  console.log('⚙️ Seeding System Settings & Product Configs...');
+  const settingsData = [
+    { key: 'organization_name', value: 'Zemen Savings & Credit Cooperative Society' },
+    { key: 'contact_email', value: 'support@zemensacco.com' },
+    { key: 'primary_phone', value: '+251 11 661 2345' },
+    { key: 'default_currency', value: 'ETB' },
+    { key: 'membership_fee_etb', value: '500' },
+    { key: 'min_monthly_saving_etb', value: '300' },
+    { key: 'max_loan_multiplier', value: '3' },
+    { key: 'loan_interest_rate_annual', value: '9.5%' },
+    { key: 'maintenance_mode', value: 'false' },
+  ];
+
+  for (const s of settingsData) {
+    await prisma.systemSetting.upsert({
+      where: { key: s.key },
+      update: { value: s.value },
+      create: s,
+    });
+  }
+  console.log(`✅ Seeded ${settingsData.length} system settings`);
+
+  // ==========================================
+  // 4. SEED SAVING TYPES CONFIG
+  // ==========================================
+  const savingTypesData = [
+    { name: 'Regular Compulsory Saving', minAmount: 300, maxAmount: 1000000 },
+    { name: "Children's Future Saving", minAmount: 50, maxAmount: 500000 },
+    { name: 'Fixed Time Deposit', minAmount: 10000, maxAmount: 10000000 },
+    { name: 'Non-Interest Bearing Saving', minAmount: 100, maxAmount: 5000000 },
+    { name: 'Diaspora Foreign Currency Saving', minAmount: 500, maxAmount: 10000000 },
+    { name: 'Housing & Vehicle Asset Saving', minAmount: 1000, maxAmount: 5000000 },
+  ];
+
+  for (const st of savingTypesData) {
     await prisma.savingTypeConfig.upsert({
       where: { name: st.name },
       update: { minAmount: st.minAmount, maxAmount: st.maxAmount },
       create: { name: st.name, minAmount: st.minAmount, maxAmount: st.maxAmount, isActive: true },
     });
   }
-  console.log(`✅ Seeded ${savingTypes.length} saving types`);
+  console.log(`✅ Seeded ${savingTypesData.length} saving type configurations`);
 
-  // 4. Seed Loan Types Config
-  const loanTypes = [
+  // ==========================================
+  // 5. SEED LOAN TYPES CONFIG
+  // ==========================================
+  const loanTypesData = [
     { name: 'Personal Loan', minAmount: 5000, maxAmount: 500000, minTenure: 3, maxTenure: 36 },
     { name: 'Business Loan', minAmount: 50000, maxAmount: 5000000, minTenure: 6, maxTenure: 84 },
     { name: 'Agricultural Loan', minAmount: 10000, maxAmount: 1000000, minTenure: 6, maxTenure: 60 },
     { name: 'Housing Loan', minAmount: 100000, maxAmount: 10000000, minTenure: 12, maxTenure: 120 },
     { name: 'Emergency Loan', minAmount: 1000, maxAmount: 50000, minTenure: 1, maxTenure: 12 },
-    { name: 'Education Loan', minAmount: 5000, maxAmount: 200000, minTenure: 3, maxTenure: 48 },
     { name: 'Vehicle Loan', minAmount: 50000, maxAmount: 2000000, minTenure: 6, maxTenure: 60 },
-    { name: 'Salary Advance', minAmount: 1000, maxAmount: 30000, minTenure: 1, maxTenure: 6 },
   ];
 
-  for (const lt of loanTypes) {
+  for (const lt of loanTypesData) {
     await prisma.loanTypeConfig.upsert({
       where: { name: lt.name },
       update: { minAmount: lt.minAmount, maxAmount: lt.maxAmount, minTenure: lt.minTenure, maxTenure: lt.maxTenure },
       create: { name: lt.name, isActive: true, minAmount: lt.minAmount, maxAmount: lt.maxAmount, minTenure: lt.minTenure, maxTenure: lt.maxTenure },
     });
   }
-  console.log(`✅ Seeded ${loanTypes.length} loan types`);
+  console.log(`✅ Seeded ${loanTypesData.length} loan product configurations`);
 
-  // 5. Seed Download Categories & Sample Files
-  const downloadCategories = [
-    { name: 'Application Forms', sortOrder: 0 },
-    { name: 'Policies & Guidelines', sortOrder: 1 },
-    { name: 'Reports & Financials', sortOrder: 2 },
-    { name: 'Compliance & Security', sortOrder: 3 },
-  ];
-
-  for (const dc of downloadCategories) {
-    let cat = await prisma.downloadCategory.findFirst({ where: { name: dc.name } });
-    if (!cat) {
-      cat = await prisma.downloadCategory.create({
-        data: { name: dc.name, sortOrder: dc.sortOrder, published: true },
-      });
-    }
-
-    // Seed sample files if category has no files
-    const fileCount = await prisma.downloadFile.count({ where: { categoryId: cat.id } });
-    if (fileCount === 0) {
-      if (dc.name === 'Application Forms') {
-        await prisma.downloadFile.createMany({
-          data: [
-            { categoryId: cat.id, name: 'Membership Application Form.pdf', fileSize: '245 KB', fileType: 'PDF', fileUrl: '/uploads/sample_membership_form.pdf', published: true, sortOrder: 0 },
-            { categoryId: cat.id, name: 'Loan Request Application Form.pdf', fileSize: '320 KB', fileType: 'PDF', fileUrl: '/uploads/sample_loan_form.pdf', published: true, sortOrder: 1 },
-          ],
-        });
-      } else if (dc.name === 'Policies & Guidelines') {
-        await prisma.downloadFile.createMany({
-          data: [
-            { categoryId: cat.id, name: 'SACCO Credit Policy Manual 2026.pdf', fileSize: '1.4 MB', fileType: 'PDF', fileUrl: '/uploads/sample_credit_policy.pdf', published: true, sortOrder: 0 },
-            { categoryId: cat.id, name: 'Savings & Interest Rate Terms.pdf', fileSize: '180 KB', fileType: 'PDF', fileUrl: '/uploads/sample_savings_terms.pdf', published: true, sortOrder: 1 },
-          ],
-        });
-      }
-    }
-  }
-  console.log(`✅ Seeded ${downloadCategories.length} download categories with initial sample files`);
-
-  // 6. Seed Sample News Articles
-  const newsCount = await prisma.news.count();
-  if (newsCount === 0) {
-    await prisma.news.createMany({
-      data: [
-        {
-          title: 'Zemen SACCO Annual General Meeting 2026 Announced',
-          excerpt: 'Join us for our annual members conference discussing performance, dividend declarations, and future expansion plans.',
-          content: 'Zemen SACCO is pleased to invite all active members to the 2026 Annual General Meeting. Key agenda items include financial performance reports, dividend distributions, and board member elections.',
-          category: 'Announcements',
-          status: 'PUBLISHED',
-          publishedAt: new Date(),
-        },
-        {
-          title: 'New Digital Loan Portal Launched',
-          excerpt: 'Apply for personal and business loans online with instant branch routing and real-time application tracking.',
-          content: 'Our new digital loan portal allows members to complete applications, submit required documents, and track approval status directly from their mobile phones or laptops.',
-          category: 'Digital Banking',
-          status: 'PUBLISHED',
-          publishedAt: new Date(),
-        },
-      ],
-    });
-    console.log('✅ Seeded sample news articles');
-  }
-
-  console.log('🎉 Comprehensive database seed completed successfully!');
+  console.log('\n🎉 Clean Core System Seed Completed Successfully!');
+  console.log('----------------------------------------------------');
+  console.log('🔑 Credentials to log in:');
+  console.log('  • Super Admin: admin@zemen.com / admin123');
+  console.log('  • Branch Manager (Addis): bm.addis@zemen.com / bm123456');
+  console.log('  • Credit Officer: officer@zemen.com / officer123');
+  console.log('----------------------------------------------------');
 }
 
 main()

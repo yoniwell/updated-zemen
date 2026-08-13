@@ -48,6 +48,7 @@ export class MembershipService {
       status: 'SUBMITTED',
       branch: { connect: { id: targetBranchId } },
       membershipPaymentAmount: dto.membershipPaymentAmount,
+      membershipTransactionRef: (dto as any).membershipTransactionRef,
       savingType: dto.savingType,
       savingPaymentAmount: dto.savingPaymentAmount,
       savingTransactionRef: dto.savingTransactionRef,
@@ -188,10 +189,17 @@ export class MembershipService {
     // Application info update
     let updated = application;
     const targetBranchId = await this.resolveBranchId(dto.branchId, (dto as any).preferredBranch);
-    if (targetBranchId) {
-      updated = await this.membershipRepository.update(id, {
-        branch: { connect: { id: targetBranchId } },
-      }) as any;
+    const updatePayload: Prisma.MembershipApplicationUpdateInput = {};
+
+    if (targetBranchId) updatePayload.branch = { connect: { id: targetBranchId } };
+    if (dto.membershipPaymentAmount !== undefined) updatePayload.membershipPaymentAmount = dto.membershipPaymentAmount;
+    if ((dto as any).membershipTransactionRef !== undefined) updatePayload.membershipTransactionRef = (dto as any).membershipTransactionRef;
+    if (dto.savingType !== undefined) updatePayload.savingType = dto.savingType;
+    if (dto.savingPaymentAmount !== undefined) updatePayload.savingPaymentAmount = dto.savingPaymentAmount;
+    if (dto.savingTransactionRef !== undefined) updatePayload.savingTransactionRef = dto.savingTransactionRef;
+
+    if (Object.keys(updatePayload).length > 0) {
+      updated = await this.membershipRepository.update(id, updatePayload) as any;
     }
 
 

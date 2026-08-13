@@ -7,15 +7,31 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node & Package Managers
 node_modules
+**/node_modules
 package-lock.json
+**/package-lock.json
 yarn.lock
 dist
+**/dist
 dist-ssr
 *.local
+
+# Environment & Secrets
+.env
 .env*
+**/.env*
+
 # Uploads & Temp Files
-backend/uploads/*
-!backend/uploads/.gitkeep
+uploads/*
+**/uploads/*
+!**/uploads/.gitkeep
+*.tmp
+*.bak
+.local-mysql/
+*.tar.gz
+*.zip
+
 # Scripts
 scratch/*

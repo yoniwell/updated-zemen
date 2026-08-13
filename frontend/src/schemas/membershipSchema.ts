@@ -19,12 +19,13 @@ export const membershipSchema = z.object({
   idBackName: z.string().optional(),
 
   applicantPhotoName: z.string().min(1, 'Please upload a passport-sized applicant photo'),
-  filledFormName: z.string().min(1, 'Please upload your signed membership application form'),
+  filledFormName: z.string().optional(),
 
   membershipPaymentAmount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
   }, z.number({ message: 'Membership payment amount is required' }).min(10, 'Minimum membership payment is 10 ETB')),
+  membershipTransactionRef: z.string().trim().min(1, 'Membership transaction reference is required').min(3, 'Transaction reference must be at least 3 characters'),
   membershipPaymentProofName: z.string().min(1, 'Please upload proof of membership payment receipt'),
 
   savingType: z.string().min(1, 'Please select a saving type'),
@@ -47,5 +48,5 @@ export const membershipStepSchemas = {
   2: membershipSchema.pick({ phone: true, firstName: true, fathersName: true, grandfathersName: true }),
   3: membershipSchema.pick({ idType: true, idNumber: true, idFrontName: true, idBackName: true }),
   4: membershipSchema.pick({ applicantPhotoName: true, filledFormName: true }),
-  5: membershipSchema.pick({ membershipPaymentAmount: true, membershipPaymentProofName: true, savingType: true, savingPaymentAmount: true, savingTransactionRef: true, savingProofName: true, preferredBranch: true, termsAccepted: true }),
+  5: membershipSchema.pick({ membershipPaymentAmount: true, membershipTransactionRef: true, membershipPaymentProofName: true, savingType: true, savingPaymentAmount: true, savingTransactionRef: true, savingProofName: true, preferredBranch: true, termsAccepted: true }),
 };

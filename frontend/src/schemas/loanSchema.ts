@@ -41,7 +41,7 @@ const loanBaseSchema = z.object({
   personalPhoto: z.string().min(1, 'Please upload your passport-sized photo'),
   idFrontPhoto: z.string().min(1, 'Please upload the front of your ID document'),
   idBackPhoto: z.string().optional(),
-  marriageCertificate: z.string().optional(),
+  marriageCertificate: z.string().min(1, 'Please upload your marital status / marriage certificate'),
 
   // Collateral Information
   collateralType: z.string().trim().min(1, 'Please select collateral type'),

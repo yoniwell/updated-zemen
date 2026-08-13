@@ -6,6 +6,7 @@ export interface AdminUserSession {
   name: string;
   email: string;
   role: string;
+  permissions?: string[];
   branch?: {
     id: string;
     name: string;

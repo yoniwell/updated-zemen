@@ -127,7 +127,13 @@ function RequireAdminModule({ module, children }: { module: AdminModule; childre
     return <Navigate to="/admin/login" replace />;
   }
   if (!canAccessModule(user, module)) {
-    return <Navigate to="/admin" replace />;
+    if (canAccessModule(user, 'dashboard')) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+    if (user?.role === 'CONTENT_MANAGER') {
+      return <Navigate to="/admin/cms/services" replace />;
+    }
+    return <Navigate to="/admin/login" replace />;
   }
   return <>{children}</>;
 }

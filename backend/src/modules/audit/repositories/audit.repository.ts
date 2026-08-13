@@ -14,7 +14,7 @@ export class AuditRepository {
       take,
       where,
       orderBy: orderBy || { createdAt: 'desc' },
-      include: { user: { select: { id: true, name: true, email: true } } }
+      include: { user: { select: { id: true, name: true, email: true, role: true, branch: { select: { id: true, name: true, code: true } } } } }
     });
   }
 
@@ -22,17 +22,19 @@ export class AuditRepository {
     return prisma.auditLog.count({ where });
   }
 
-  async getDashboardStats() {
+  async getDashboardStats(branchId?: string) {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const userFilter = branchId ? { user: { branchId } } : {};
 
-    const totalLogs = await prisma.auditLog.count();
+    const totalLogs = await prisma.auditLog.count({ where: userFilter });
     const todayLogs = await prisma.auditLog.count({
-      where: { createdAt: { gte: startOfDay } }
+      where: { ...userFilter, createdAt: { gte: startOfDay } }
     });
 
     const actionCounts = await prisma.auditLog.groupBy({
       by: ['action'],
+      where: userFilter,
       _count: { action: true },
       orderBy: { _count: { action: 'desc' } },
       take: 5

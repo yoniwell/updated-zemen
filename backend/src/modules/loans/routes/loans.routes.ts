@@ -6,13 +6,7 @@ import { applyLoanSchema, updateLoanStatusSchema, assignLoanSchema, updateLoanSc
 import { AppError } from '../../../common/errors/AppError';
 import { upload } from '../../../middleware/upload';
 
-const authorize = (...roles: string[]) => {
-  return (req: any, res: any, next: any) => {
-    if (!req.user) return next(new AppError('Authentication required', 401));
-    if (!roles.includes(req.user.role)) return next(new AppError('Insufficient permissions', 403));
-    next();
-  };
-};
+import { requirePermission } from '../../../middleware/auth';
 
 export const createLoansRoutes = (loansController: LoansController): Router => {
   const router = Router();
@@ -24,18 +18,18 @@ export const createLoansRoutes = (loansController: LoansController): Router => {
   // Admin routes
   router.use(authenticate);
 
-  router.get('/', loansController.getLoans);
-  router.get('/:id', loansController.getLoanById);
+  router.get('/', requirePermission('loans:read'), loansController.getLoans);
+  router.get('/:id', requirePermission('loans:read'), loansController.getLoanById);
   
-  router.patch('/:id/status', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateLoanStatusSchema }), loansController.updateStatus);
-  router.patch('/:id/assign', authorize('SUPER_ADMIN', 'BRANCH_MANAGER'), validate({ body: assignLoanSchema }), loansController.assignApplication);
-  router.patch('/:id', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateLoanSchema }), loansController.updateApplication);
+  router.patch('/:id/status', requirePermission('loans:approve'), validate({ body: updateLoanStatusSchema }), loansController.updateStatus);
+  router.patch('/:id/assign', requirePermission('loans:write'), validate({ body: assignLoanSchema }), loansController.assignApplication);
+  router.patch('/:id', requirePermission('loans:write'), validate({ body: updateLoanSchema }), loansController.updateApplication);
 
   // Document routes
-  router.get('/:id/documents', loansController.getDocuments);
-  router.patch('/:id/documents/:documentId/verify', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), loansController.verifyDocument);
+  router.get('/:id/documents', requirePermission('loans:read'), loansController.getDocuments);
+  router.patch('/:id/documents/:documentId/verify', requirePermission('documents:verify'), loansController.verifyDocument);
   
-  router.post('/:id/notes', authorize('SUPER_ADMIN', 'LOAN_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), loansController.addNote);
+  router.post('/:id/notes', requirePermission('loans:write'), loansController.addNote);
 
   return router;
 };

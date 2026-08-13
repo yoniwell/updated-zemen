@@ -6,13 +6,7 @@ import { applyMembershipSchema, updateMembershipStatusSchema, assignMembershipSc
 import { AppError } from '../../../common/errors/AppError';
 import { upload } from '../../../middleware/upload';
 
-const authorize = (...roles: string[]) => {
-  return (req: any, res: any, next: any) => {
-    if (!req.user) return next(new AppError('Authentication required', 401));
-    if (!roles.includes(req.user.role)) return next(new AppError('Insufficient permissions', 403));
-    next();
-  };
-};
+import { requirePermission } from '../../../middleware/auth';
 
 export const createMembershipRoutes = (membershipController: MembershipController): Router => {
   const router = Router();
@@ -24,18 +18,18 @@ export const createMembershipRoutes = (membershipController: MembershipControlle
   // Admin routes
   router.use(authenticate);
 
-  router.get('/', membershipController.getMemberships);
-  router.get('/:id', membershipController.getMembershipById);
+  router.get('/', requirePermission('membership:read'), membershipController.getMemberships);
+  router.get('/:id', requirePermission('membership:read'), membershipController.getMembershipById);
   
-  router.patch('/:id/status', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateMembershipStatusSchema }), membershipController.updateStatus);
-  router.patch('/:id/assign', authorize('SUPER_ADMIN', 'BRANCH_MANAGER'), validate({ body: assignMembershipSchema }), membershipController.assignApplication);
-  router.patch('/:id', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER'), validate({ body: updateMembershipSchema }), membershipController.updateApplication);
+  router.patch('/:id/status', requirePermission('membership:approve'), validate({ body: updateMembershipStatusSchema }), membershipController.updateStatus);
+  router.patch('/:id/assign', requirePermission('membership:write'), validate({ body: assignMembershipSchema }), membershipController.assignApplication);
+  router.patch('/:id', requirePermission('membership:write'), validate({ body: updateMembershipSchema }), membershipController.updateApplication);
 
   // Document routes
-  router.get('/:id/documents', membershipController.getDocuments);
-  router.patch('/:id/documents/:documentId/verify', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER', 'KYC_OFFICER'), membershipController.verifyDocument);
+  router.get('/:id/documents', requirePermission('membership:read'), membershipController.getDocuments);
+  router.patch('/:id/documents/:documentId/verify', requirePermission('documents:verify'), membershipController.verifyDocument);
   
-  router.post('/:id/notes', authorize('SUPER_ADMIN', 'MEMBERSHIP_OFFICER', 'OFFICER', 'BRANCH_MANAGER', 'KYC_OFFICER'), membershipController.addNote);
+  router.post('/:id/notes', requirePermission('membership:write'), membershipController.addNote);
 
   return router;
 };

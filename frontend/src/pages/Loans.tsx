@@ -113,7 +113,7 @@ export default function Loans({ onNavigate }: LoansProps) {
                 <Button size="lg" className="w-full sm:w-auto bg-white text-blue-900 hover:bg-gray-100" onClick={() => navigate('/loan-apply')}>
                   {tPublic('loansStartApplication', 'Start Loan Application')}
                 </Button>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto text-white border-white hover:bg-white/10" onClick={() => onNavigate('contact')}>
+                <Button size="lg" variant="outline" className="w-full sm:w-auto bg-transparent text-white border-2 border-white font-bold hover:bg-white hover:text-blue-900 transition-all" onClick={() => onNavigate('contact')}>
                   {tPublic('loansServiceTalkAdvisor', 'Talk to a Loan Advisor')}
                 </Button>
               </div>

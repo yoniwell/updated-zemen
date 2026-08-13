@@ -37,6 +37,8 @@ const mapModelToSchema = (req: any, res: any, next: any) => {
   next();
 };
 
+import { requirePermission } from '../../../middleware/auth';
+
 export const createContentRoutes = (contentController: ContentController): Router => {
   const router = Router();
 
@@ -45,7 +47,7 @@ export const createContentRoutes = (contentController: ContentController): Route
   router.get('/:modelName/:id', contentController.getItemById);
 
   router.use(authenticate);
-  router.use(authorize('SUPER_ADMIN', 'CONTENT_MANAGER'));
+  router.use(requirePermission('cms:write'));
 
   router.post('/:modelName', mapModelToSchema, contentController.createItem);
   router.patch('/:modelName/:id', mapModelToSchema, contentController.updateItem);

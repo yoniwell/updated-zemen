@@ -16,6 +16,9 @@ export class AuditService {
     if (query.action) where.action = query.action;
     if (query.userId) where.userId = query.userId;
     if (query.targetType) where.targetType = query.targetType;
+    if ((query as any).branchId) {
+      where.user = { branchId: (query as any).branchId };
+    }
     if (query.startDate || query.endDate) {
       where.createdAt = {};
       if (query.startDate) where.createdAt.gte = new Date(query.startDate);
@@ -37,8 +40,8 @@ export class AuditService {
   }
 
 
-  async getDashboardStats() {
-    return this.auditRepository.getDashboardStats();
+  async getDashboardStats(branchId?: string) {
+    return this.auditRepository.getDashboardStats(branchId);
   }
 
 }

@@ -17,7 +17,7 @@ type VerifiedRecord = {
 };
 
 const OTP_TTL_SECONDS = 5 * 60;
-const OTP_RESEND_COOLDOWN_SECONDS = 60;
+const OTP_RESEND_COOLDOWN_SECONDS = 20;
 const OTP_MAX_ATTEMPTS = 5;
 const VERIFIED_TOKEN_TTL_SECONDS = 30 * 60;
 

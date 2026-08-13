@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminFetch } from '@/lib/adminApi';
-import { Button } from '@/components/ui/button';
 import { MEMBERSHIP_QUEUE_STATUS_OPTIONS } from '@/lib/adminOptions';
 import { useAdminBranches } from '@/hooks/useAdminBranches';
 import StatusBadge from '@/components/admin/StatusBadge';
 import { toast } from 'sonner';
 import { useAdminI18n } from '@/lib/uiI18n';
-import { AlertTriangle, BadgeCheck } from 'lucide-react';
-import { Download } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Info } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Download, Info, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getAdminUser } from '@/lib/adminAuth';
+
 type MembershipQueueApplication = {
   id: string;
   referenceNo: string;
@@ -77,10 +74,13 @@ export default function MembershipQueue() {
   const { tAdmin } = useAdminI18n();
   const navigate = useNavigate();
   const { branches } = useAdminBranches();
+  const currentUser = getAdminUser();
+  const isBranchManager = currentUser?.role === 'BRANCH_MANAGER';
+  const managerBranchId = currentUser?.branch?.id || '';
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [branchFilter, setBranchFilter] = useState('all');
-  const [officerFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState<string>(isBranchManager ? managerBranchId : 'all');
   const [page, setPage] = useState(1);
   const limit = 20;
   const [sortBy] = useState<'createdAt' | 'updatedAt' | 'submittedAt' | 'status' | 'referenceNo'>('createdAt');
@@ -92,6 +92,12 @@ export default function MembershipQueue() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isBranchManager && managerBranchId) {
+      setBranchFilter(managerBranchId);
+    }
+  }, [isBranchManager, managerBranchId]);
 
   useEffect(() => {
     const loadQueue = async () => {
@@ -114,7 +120,6 @@ export default function MembershipQueue() {
         }
 
         if (branchFilter !== 'all') params.set('branchId', branchFilter);
-        if (officerFilter !== 'all' && officerFilter !== '—') params.set('assignedToId', officerFilter);
 
         const response = await adminFetch<MembershipQueueResponse>(`/api/membership?${params.toString()}`);
         setApplications(response.applications || []);
@@ -131,7 +136,7 @@ export default function MembershipQueue() {
     };
 
     void loadQueue();
-  }, [page, limit, sortBy, sortOrder, search, statusFilter, branchFilter, officerFilter, reloadSeq, tAdmin]);
+  }, [page, limit, sortBy, sortOrder, search, statusFilter, branchFilter, reloadSeq, tAdmin]);
 
 
 
@@ -234,16 +239,18 @@ export default function MembershipQueue() {
           ))}
         </select>
 
-        <select 
-          className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
-          value={branchFilter} 
-          onChange={(event) => setBranchFilter(event.target.value)}
-        >
-          <option value="all">{tAdmin('allBranches', 'All Branches')}</option>
-          {branches.map((branch) => (
-            <option key={branch.id} value={branch.id}>{branch.name}</option>
-          ))}
-        </select>
+        {!isBranchManager && (
+          <select 
+            className="bg-white shadow-sm border-none rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer transition-shadow" 
+            value={branchFilter} 
+            onChange={(event) => setBranchFilter(event.target.value)}
+          >
+            <option value="all">{tAdmin('allBranches', 'All Branches')}</option>
+            {branches.map((branch) => (
+              <option key={branch.id} value={branch.id}>{branch.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* 2.3 Data Table */}

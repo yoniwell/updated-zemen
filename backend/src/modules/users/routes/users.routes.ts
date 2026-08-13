@@ -5,33 +5,24 @@ import { authenticate } from '../../../middleware/auth.middleware';
 import { createUserSchema, updateUserSchema, usersQuerySchema } from '../validation/users.schema';
 import { AppError } from '../../../common/errors/AppError';
 
-// Quick authorization middleware for roles
-const authorize = (...roles: string[]) => {
-  return (req: any, res: any, next: any) => {
-    if (!req.user) return next(new AppError('Authentication required', 401));
-    if (!roles.includes(req.user.role)) return next(new AppError('Insufficient permissions', 403));
-    next();
-  };
-};
+import { requirePermission } from '../../../middleware/auth';
 
 export const createUsersRoutes = (usersController: UsersController): Router => {
   const router = Router();
   
-  // All user management requires SUPER_ADMIN (or specific roles)
   router.use(authenticate);
-  router.use(authorize('SUPER_ADMIN'));
 
-  router.get('/', validate({ query: usersQuerySchema }), usersController.getUsers);
-  router.post('/', validate({ body: createUserSchema }), usersController.createUser);
+  router.get('/', requirePermission('users:read'), validate({ query: usersQuerySchema }), usersController.getUsers);
+  router.post('/', requirePermission('users:write'), validate({ body: createUserSchema }), usersController.createUser);
   
-  router.patch('/bulk', usersController.bulkAction);
-  router.post('/:id/role-impact-preview', usersController.getRoleImpactPreview);
+  router.patch('/bulk', requirePermission('users:write'), usersController.bulkAction);
+  router.post('/:id/role-impact-preview', requirePermission('users:write'), usersController.getRoleImpactPreview);
   
-  router.get('/:id', usersController.getUserById);
-  router.patch('/:id', validate({ body: updateUserSchema }), usersController.updateUser);
-  router.delete('/:id', usersController.deleteUser);
-  router.patch('/:id/password', usersController.resetPassword);
-  router.post('/:id/invite', usersController.inviteUser);
+  router.get('/:id', requirePermission('users:read'), usersController.getUserById);
+  router.patch('/:id', requirePermission('users:write'), validate({ body: updateUserSchema }), usersController.updateUser);
+  router.delete('/:id', requirePermission('users:write'), usersController.deleteUser);
+  router.patch('/:id/password', requirePermission('users:write'), usersController.resetPassword);
+  router.post('/:id/invite', requirePermission('users:write'), usersController.inviteUser);
 
   return router;
 };

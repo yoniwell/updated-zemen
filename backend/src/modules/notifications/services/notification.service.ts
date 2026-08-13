@@ -35,38 +35,30 @@ const getTransporter = (): nodemailer.Transporter | null => {
     return null;
   }
 
-  const service = process.env.EMAIL_SERVICE || (process.env.EMAIL_SMTP_HOST?.includes('gmail') ? 'gmail' : undefined);
   const host = process.env.EMAIL_SMTP_HOST || 'smtp.gmail.com';
   const port = Number(process.env.EMAIL_SMTP_PORT || 465);
 
-  if (service) {
-    cachedTransporter = nodemailer.createTransport({
-      service,
-      auth: { user, pass },
-      pool: true,
-      maxConnections: 5,
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
-    });
-  } else {
-    cachedTransporter = nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      connectionTimeout: 5000,
-      greetingTimeout: 5000,
-      socketTimeout: 5000,
-      tls: { rejectUnauthorized: false },
-      auth: {
-        user,
-        pass,
-      },
-    });
-  }
+  cachedTransporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    rateDelta: 1000,
+    rateLimit: 14,
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 5000,
+    family: 4, // Force IPv4 to bypass 30-45s Node.js IPv6 DNS lookup delays
+    auth: {
+      user,
+      pass,
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  } as any);
 
   return cachedTransporter;
 };

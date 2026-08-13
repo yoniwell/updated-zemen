@@ -93,6 +93,7 @@ export default function LoanPortal() {
   const [otpHint, setOtpHint] = useState<string | null>(null);
   const [branchOptions, setBranchOptions] = useState<LoanBranchOption[]>([]);
   const [loanTypes, setLoanTypes] = useState<ConfigLoanType[]>([]);
+  const [createdApp, setCreatedApp] = useState<LoanSubmitResponse['application'] | null>(null);
 
   const {
     register,
@@ -159,12 +160,17 @@ export default function LoanPortal() {
     }
   }, [activeTenures, setValue]);
 
-  // Load saved session state
+  // Load saved session state (expires after 24h)
   useEffect(() => {
     const saved = localStorage.getItem('loan_portal_state');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        const isExpired = parsed.timestamp && Date.now() - parsed.timestamp > 86400000;
+        if (isExpired) {
+          localStorage.removeItem('loan_portal_state');
+          return;
+        }
         if (parsed.formValues) {
            reset({ ...parsed.formValues, otpCode: '' });
         }
@@ -177,22 +183,41 @@ export default function LoanPortal() {
     }
   }, [reset]);
 
-  // Fetch dynamic data when reaching step 3
+  // Fetch dynamic public data once on mount
   useEffect(() => {
-    if (step === 3) {
-      fetchPublicBranches().then((data) => {
-        setBranchOptions(data.branches);
-      }).catch((err) => {
-        console.error('Failed to fetch branches:', err);
-      });
+    const controller = new AbortController();
 
-      fetchConfigLoanTypes().then((data) => {
-        setLoanTypes(data);
-      }).catch((err) => {
-        console.error('Failed to fetch loan types:', err);
-      });
-    }
-  }, [step]);
+    const loadPublicData = async () => {
+      try {
+        const [branchData, loanTypeData] = await Promise.all([
+          fetchPublicBranches().catch(() => ({ branches: [] })),
+          fetchConfigLoanTypes().catch(() => []),
+        ]);
+
+        const branches = Array.isArray(branchData.branches)
+          ? branchData.branches.map((b) => ({ id: b.id, name: b.name }))
+          : [];
+
+        if (branches.length > 0) {
+          setBranchOptions(branches);
+          const currentBranchId = getValues('branchId');
+          if (!currentBranchId || !branches.some((branch) => branch.id === currentBranchId)) {
+            setValue('branchId', '');
+          }
+        }
+
+        if (Array.isArray(loanTypeData)) {
+          setLoanTypes(loanTypeData);
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    };
+
+    void loadPublicData();
+
+    return () => controller.abort();
+  }, [getValues, setValue]);
 
   // Save session state on change
   useEffect(() => {
@@ -200,38 +225,11 @@ export default function LoanPortal() {
       formValues: { ...values, otpCode: '' }, // Never persist the OTP code itself
       step,
       otpVerified,
-      otpVerificationToken
+      otpVerificationToken,
+      timestamp: Date.now(),
     };
     localStorage.setItem('loan_portal_state', JSON.stringify(toSave));
   }, [values, step, otpVerified, otpVerificationToken]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const loadBranches = async () => {
-      try {
-        const payload = await fetchPublicBranches();
-        const branches = Array.isArray(payload.branches)
-          ? payload.branches.map((b) => ({ id: b.id, name: b.name }))
-          : [];
-
-        if (branches.length === 0) return;
-
-        setBranchOptions(branches);
-
-        const currentBranchId = getValues('branchId');
-        if (!currentBranchId || !branches.some((branch) => branch.id === currentBranchId)) {
-          setValue('branchId', '');
-        }
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    };
-
-    void loadBranches();
-
-    return () => controller.abort();
-  }, [getValues, setValue]);
 
   useEffect(() => {
     if (resendInSeconds <= 0) {
@@ -280,7 +278,7 @@ export default function LoanPortal() {
     tPublicUi('documents', 'Documents'),
     tPublicUi('collateralInfo', 'Collateral Info'),
     tPublicUi('businessInfo', 'Business Info'),
-    tPublicUi('consent', 'Consent'),
+    tPublicUi('reviewAndConfirm', 'Review & Confirm'),
   ];
 
   const summaryRows = useMemo(() => {
@@ -387,71 +385,64 @@ export default function LoanPortal() {
   };
 
   const onSubmit = async (data: LoanFormInput) => {
-    const selectedBranchObj = branchOptions.find((branch) => branch.id === data.branchId || branch.name === data.branchId);
-    const resolvedBranchId = selectedBranchObj?.id || (typeof data.branchId === 'string' && data.branchId.trim() !== '' ? data.branchId : undefined);
-    const resolvedBranchName = selectedBranchObj?.name || (typeof data.branchId === 'string' && data.branchId.trim() !== '' ? data.branchId : undefined);
+    let appRecord = createdApp;
     const applicantName = `${data.firstName} ${data.fathersName || ''} ${data.grandfathersName}`.trim();
 
-    const payload = {
-      firstName: data.firstName,
-      fathersName: data.fathersName || undefined,
-      grandfathersName: data.grandfathersName,
-      membershipNo: data.membershipNo,
-      phone: data.phone,
-      email: data.email,
-      loanType: data.loanType,
-      amount: data.amount,
-      tenure: data.tenure,
-      branchId: resolvedBranchId,
-      preferredBranch: resolvedBranchName,
-      idType: data.idType,
-      maritalStatus: data.maritalStatus,
-      collateralType: data.collateralType || undefined,
-      collateralDesc: data.collateralDesc || undefined,
-      termsAccepted: data.termsAccepted,
-      signature: data.membershipNo,
-      // =========================================================================
-      // FIXED: Read from local state OR look for the browser memory backup value
-      // =========================================================================
-      otpVerificationToken: otpVerificationToken || sessionStorage.getItem('loan_otp_token') || '',
-    };
+    if (!appRecord) {
+      const selectedBranchObj = branchOptions.find((branch) => branch.id === data.branchId || branch.name === data.branchId);
+      const resolvedBranchId = selectedBranchObj?.id || (typeof data.branchId === 'string' && data.branchId.trim() !== '' ? data.branchId : undefined);
+      const resolvedBranchName = selectedBranchObj?.name || (typeof data.branchId === 'string' && data.branchId.trim() !== '' ? data.branchId : undefined);
 
+      const payload = {
+        firstName: data.firstName,
+        fathersName: data.fathersName || undefined,
+        grandfathersName: data.grandfathersName,
+        membershipNo: data.membershipNo,
+        phone: data.phone,
+        email: data.email,
+        loanType: data.loanType,
+        amount: data.amount,
+        tenure: data.tenure,
+        branchId: resolvedBranchId,
+        preferredBranch: resolvedBranchName,
+        idType: data.idType,
+        maritalStatus: data.maritalStatus,
+        collateralType: data.collateralType || undefined,
+        collateralDesc: data.collateralDesc || undefined,
+        termsAccepted: data.termsAccepted,
+        signature: data.membershipNo,
+        otpVerificationToken: otpVerificationToken || sessionStorage.getItem('loan_otp_token') || '',
+      };
 
-    // =========================================================================
-    // MODIFIED: Type-Safe URL Compilation & Authorization Injection
-    // =========================================================================
-    // 1. Convert baseUrl to string safely and clean duplicate slashes
-    const cleanBaseUrl = String(baseUrl || '').trim();
-    const finalRequestUrl = `${cleanBaseUrl}/api/loans`.replace(/([^:]\/)\/+/g, "$1");
+      const cleanBaseUrl = String(baseUrl || '').trim();
+      const finalRequestUrl = `${cleanBaseUrl}/api/loans`.replace(/([^:]\/)\/+/g, "$1");
 
-    // 2. Explicitly type options with RequestInit to clear editor red underlines
-    const fetchOptions: RequestInit = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // FIXED: Inject the Authorization bearer session token to bypass 401 gate blocks
+      const fetchOptions: RequestInit = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      };
 
-      },
-      body: JSON.stringify(payload),
-    };
-
-    // 3. Fire the processed fetch endpoint request
-    const response = await fetchWithTimeout(finalRequestUrl, { ...fetchOptions, timeoutMs: 120000 });
-    // =========================================================================
-
-    const responseText = await response.text();
-    let result: LoanSubmitResponse | { error?: string } = { error: tPublicUi('failedLoanSubmit', 'Failed to submit loan application') };
-    if (responseText) {
-      try {
-        const parsed = JSON.parse(responseText);
-        result = ('success' in parsed && 'data' in parsed) ? parsed.data : parsed;
-      } catch {
-        result = { error: tPublicUi('unexpectedServerResponse', 'Unexpected response from server') };
+      const response = await fetchWithTimeout(finalRequestUrl, { ...fetchOptions, timeoutMs: 120000 });
+      const responseText = await response.text();
+      let result: LoanSubmitResponse | { error?: string } = { error: tPublicUi('failedLoanSubmit', 'Failed to submit loan application') };
+      if (responseText) {
+        try {
+          const parsed = JSON.parse(responseText);
+          result = ('success' in parsed && 'data' in parsed) ? parsed.data : parsed;
+        } catch {
+          result = { error: tPublicUi('unexpectedServerResponse', 'Unexpected response from server') };
+        }
       }
-    }
 
-    if (!response.ok || !('application' in result)) {
-      throw new Error(String(publicErrorMessages?.submitApplication || 'Submission Failed'));
+      if (!response.ok || !('application' in result)) {
+        throw new Error(String(publicErrorMessages?.submitApplication || 'Submission Failed'));
+      }
+
+      appRecord = result.application;
+      setCreatedApp(appRecord);
     }
 
     const uploads: Array<{ file: File; category: string; label: string }> = [];
@@ -469,25 +460,26 @@ export default function LoanPortal() {
     
     await Promise.all(uploads.map(async (upload) => {
       try {
-        // FIXED: Added casting protection wrapper to clear downstream loop template parsing conflicts
-        await uploadLoanDocument((result as LoanSubmitResponse).application.id, upload.file, upload.category);
+        await uploadLoanDocument(appRecord!.id, upload.file, upload.category);
       } catch {
         failedUploads.push(upload.label);
       }
     }));
 
-    setReferenceNo((result as LoanSubmitResponse).application.referenceNo);
+    toast.dismiss('submit-toast');
+    setReferenceNo(appRecord.referenceNo);
     setSubmittedName(applicantName);
     setStep(8); // Show success
-    toast.dismiss('submit-toast');
+
+    localStorage.removeItem('loan_portal_state');
+    sessionStorage.removeItem('loan_otp_token');
+
     if (failedUploads.length > 0) {
       toast.warning(`${tPublicUi('applicationSubmittedUploadFailed', 'Application submitted, but failed to upload')}: ${failedUploads.join(', ')}`);
-      sessionStorage.removeItem('loan_portal_state');
       return;
     }
 
     toast.success(tPublicUi('loanSubmittedSuccess', 'Loan application submitted successfully'));
-    sessionStorage.removeItem('loan_portal_state');
   };
 
 
@@ -623,26 +615,49 @@ export default function LoanPortal() {
           {step === 1 && (
             <div className="grid gap-4 md:grid-cols-2">
               <Field label={tPublicUi('email', 'Email')} error={errorText('email')}>
-                <Input type="email" placeholder="you@example.com" {...register('email')} />
+                <div className="flex gap-2">
+                  <Input type="email" placeholder="you@example.com" readOnly={otpVerified} className={otpVerified ? 'bg-slate-100 font-semibold text-slate-700 cursor-not-allowed' : ''} {...register('email')} />
+                  {otpVerified && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-xs font-bold shrink-0"
+                      onClick={() => {
+                        setOtpVerified(false);
+                        setOtpSent(false);
+                        setOtpVerificationToken(null);
+                        setValue('otpCode', '');
+                        sessionStorage.removeItem('loan_otp_token');
+                      }}
+                    >
+                      Change Email
+                    </Button>
+                  )}
+                </div>
               </Field>
               <Field label={tPublicUi('otpCode', 'OTP Code')} error={errorText('otpCode')}>
-                <Input placeholder="000000" maxLength={8} {...register('otpCode')} />
+                <Input placeholder="000000" maxLength={8} disabled={otpVerified} {...register('otpCode')} />
               </Field>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-                <Button type="button" onClick={() => void sendOtpCode(false)} disabled={otpBusy || resendInSeconds > 0}>
-                  {otpBusy ? tPublicUi('pleaseWait', 'Please wait...') : tPublicUi('sendCode', 'Send Code')}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void sendOtpCode(true)} disabled={otpBusy || resendInSeconds > 0}>
-                  {tPublicUi('resendCode', 'Resend Code')} {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
-                  {tPublicUi('verifyOtp', 'Verify OTP')}
-                </Button>
-                <span className={`text-sm font-semibold ${otpVerified ? 'text-emerald-700' : 'text-slate-500'}`}>
-                  {otpVerified ? tPublicUi('verified', 'Verified') : tPublicUi('notVerified', 'Not verified')}
+                {!otpVerified && (
+                  <>
+                    <Button type="button" onClick={() => void sendOtpCode(false)} disabled={otpBusy || resendInSeconds > 0}>
+                      {otpBusy ? tPublicUi('pleaseWait', 'Please wait...') : tPublicUi('sendCode', 'Send Code')}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => void sendOtpCode(true)} disabled={otpBusy || resendInSeconds > 0}>
+                      {tPublicUi('resendCode', 'Resend Code')} {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
+                      {tPublicUi('verifyOtp', 'Verify OTP')}
+                    </Button>
+                  </>
+                )}
+                <span className={`text-sm font-bold ${otpVerified ? 'text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200' : 'text-slate-500'}`}>
+                  {otpVerified ? '✓ Email Verified' : tPublicUi('notVerified', 'Not verified')}
                 </span>
               </div>
-              {otpSent && otpExpiresInSeconds > 0 && (
+              {otpSent && !otpVerified && otpExpiresInSeconds > 0 && (
                 <p className="md:col-span-2 text-xs font-semibold text-slate-600">
                   {tPublicUi('codeExpiresIn', 'Code expires in')} {formatSeconds(otpExpiresInSeconds)}
                 </p>
@@ -773,7 +788,7 @@ export default function LoanPortal() {
               <FileInput label={tPublicUi('personalPhoto', 'Personal Photo')} required value={getValues('personalPhoto')} onPick={(file) => setUploadedFile('personalPhoto', file)} error={errorText('personalPhoto')} />
               <FileInput label={tPublicUi('idFrontPhoto', 'ID Front Photo')} required value={getValues('idFrontPhoto')} onPick={(file) => setUploadedFile('idFrontPhoto', file)} error={errorText('idFrontPhoto')} />
               <FileInput label={tPublicUi('idBackPhoto', 'ID Back Photo')} value={getValues('idBackPhoto')} onPick={(file) => setUploadedFile('idBackPhoto', file)} error={errorText('idBackPhoto')} />
-              <FileInput label={tPublicUi('marriageCertificate', 'Marriage Certificate')} required value={getValues('marriageCertificate')} onPick={(file) => setUploadedFile('marriageCertificate', file)} error={errorText('marriageCertificate')} />
+              <FileInput label={tPublicUi('marriageCertificate', 'Marital Status / Marriage Certificate')} required value={getValues('marriageCertificate')} onPick={(file) => setUploadedFile('marriageCertificate', file)} error={errorText('marriageCertificate')} />
             </div>
           )}
 
@@ -915,6 +930,7 @@ function FileInput({ label, required, value, onPick, error }: { label: string; r
     if (file.size > MAX_FILE_SIZE) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       setFileSizeError(`File size (${sizeMB}MB) exceeds maximum allowed size of 5MB`);
+      event.target.value = '';
       onPick(null);
       return;
     }
@@ -926,7 +942,7 @@ function FileInput({ label, required, value, onPick, error }: { label: string; r
     <div className="space-y-1">
       <Label className="text-xs font-semibold text-slate-600">{label} {required ? '*' : ''} <span className="font-normal text-slate-500">(Max 5MB)</span></Label>
       <Input type="file" accept=".jpg,.jpeg,.png,.webp,.heic,.heif,.pdf" onChange={handleFileChange} className={fileSizeError ? 'border-red-300 focus:ring-red-200' : ''} />
-      {value && <p className="text-xs text-emerald-700">? Selected: {value}</p>}
+      {value && <p className="text-xs text-emerald-700">✓ Selected: {value}</p>}
       {fileSizeError && <p className="text-xs text-red-600">{fileSizeError}</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

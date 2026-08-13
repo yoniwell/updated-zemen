@@ -31,12 +31,91 @@ export const ROLE_LABELS: Record<AdminRole, string> = {
 
 export const ROLE_ACCESS: Record<AdminRole, AdminModule[]> = {
   SUPER_ADMIN: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'document-review', 'audit-log', 'cms', 'user-management', 'settings'],
-  BRANCH_MANAGER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'user-management'],
-  OFFICER: ['membership', 'members-list', 'loan', 'loans-list'],
+  BRANCH_MANAGER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'audit-log'],
+  OFFICER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list'],
   CONTENT_MANAGER: ['cms'],
 };
 
-const ROLE_ACCESS_OVERRIDE_KEY = 'zemen_role_access_overrides';
+export type Permission =
+  | 'dashboard:view'
+  | 'membership:read'
+  | 'membership:write'
+  | 'membership:approve'
+  | 'loans:read'
+  | 'loans:write'
+  | 'loans:approve'
+  | 'members:read'
+  | 'members:write'
+  | 'documents:verify'
+  | 'cms:read'
+  | 'cms:write'
+  | 'users:read'
+  | 'users:write'
+  | 'settings:read'
+  | 'settings:write'
+  | 'audit:read';
+
+export const ALL_PERMISSIONS: Permission[] = [
+  'dashboard:view',
+  'membership:read',
+  'membership:write',
+  'membership:approve',
+  'loans:read',
+  'loans:write',
+  'loans:approve',
+  'members:read',
+  'members:write',
+  'documents:verify',
+  'cms:read',
+  'cms:write',
+  'users:read',
+  'users:write',
+  'settings:read',
+  'settings:write',
+  'audit:read',
+];
+
+export const ROLE_PERMISSIONS_MAP: Record<AdminRole, Permission[]> = {
+  SUPER_ADMIN: ALL_PERMISSIONS,
+  BRANCH_MANAGER: [
+    'dashboard:view',
+    'membership:read',
+    'membership:write',
+    'membership:approve',
+    'loans:read',
+    'loans:write',
+    'loans:approve',
+    'members:read',
+    'members:write',
+    'documents:verify',
+    'audit:read',
+  ],
+  OFFICER: [
+    'dashboard:view',
+    'membership:read',
+    'membership:write',
+    'membership:approve',
+    'loans:read',
+    'loans:write',
+    'loans:approve',
+    'members:read',
+    'documents:verify',
+  ],
+  CONTENT_MANAGER: ['cms:read', 'cms:write'],
+};
+
+export const MODULE_REQUIRED_PERMISSIONS: Record<AdminModule, Permission> = {
+  dashboard: 'dashboard:view',
+  membership: 'membership:read',
+  'members-list': 'members:read',
+  loan: 'loans:read',
+  'loans-list': 'loans:read',
+  'document-review': 'documents:verify',
+  'audit-log': 'audit:read',
+  cms: 'cms:read',
+  'user-management': 'users:read',
+  settings: 'settings:read',
+};
 
 export const roleRequiresBranch = (role: AdminRole): boolean =>
   role === 'BRANCH_MANAGER' || role === 'OFFICER';
@@ -52,10 +131,23 @@ export function getRoleForSession(user: AdminUserSession | null): AdminRole | nu
   return user.role;
 }
 
-export function canAccessModule(user: AdminUserSession | null, module: AdminModule): boolean {
+export function getPermissionsForUser(user: AdminUserSession | null): Permission[] {
   const role = getRoleForSession(user);
   if (!role) {
+    return [];
+  }
+  return ROLE_PERMISSIONS_MAP[role] || [];
+}
+
+export function hasPermission(user: AdminUserSession | null, permission: Permission): boolean {
+  const permissions = getPermissionsForUser(user);
+  return permissions.includes(permission);
+}
+
+export function canAccessModule(user: AdminUserSession | null, module: AdminModule): boolean {
+  const requiredPermission = MODULE_REQUIRED_PERMISSIONS[module];
+  if (!requiredPermission) {
     return false;
   }
-  return ROLE_ACCESS[role].includes(module);
+  return hasPermission(user, requiredPermission);
 }

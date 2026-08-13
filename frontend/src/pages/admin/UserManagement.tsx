@@ -98,8 +98,14 @@ export default function UserManagement() {
   const [sortBy] = useState<'createdAt' | 'name' | 'email' | 'role' | 'lastLogin'>('createdAt');
   const [sortOrder] = useState<'asc' | 'desc'>('desc');
 
+  const managerBranchId = user?.branch?.id || '';
+  const isBranchManager = user?.role === 'BRANCH_MANAGER';
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState<UserFormState>(defaultCreateState);
+  const [createForm, setCreateForm] = useState<UserFormState>({
+    ...defaultCreateState,
+    branchId: isBranchManager ? managerBranchId : '',
+  });
   const [createSubmitting, setCreateSubmitting] = useState(false);
 
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -184,7 +190,10 @@ export default function UserManagement() {
       });
       toast.success(tAdmin('userCreatedSuccessfully', 'User created successfully'));
       setIsCreateOpen(false);
-      setCreateForm(defaultCreateState);
+      setCreateForm({
+        ...defaultCreateState,
+        branchId: isBranchManager ? managerBranchId : '',
+      });
       await loadData();
     } catch (error) {
       toastApiError(error, tAdmin('failedToCreateUser', 'Failed to create user'));

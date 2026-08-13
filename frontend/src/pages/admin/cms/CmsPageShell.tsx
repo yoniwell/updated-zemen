@@ -57,7 +57,15 @@ export function CmsPage<T extends { id: string }>({
     setLoading(true);
     try {
       const res = await adminFetch(endpoint) as any;
-      setItems(res?.[collectionKey] ?? res?.data ?? []);
+      if (Array.isArray(res)) {
+        setItems(res);
+      } else if (Array.isArray(res?.[collectionKey])) {
+        setItems(res[collectionKey]);
+      } else if (Array.isArray(res?.data)) {
+        setItems(res.data);
+      } else {
+        setItems([]);
+      }
     } catch { toast.error('Failed to load data'); }
     finally { setLoading(false); }
   }, [endpoint, collectionKey]);
@@ -164,30 +172,34 @@ export function CmsPage<T extends { id: string }>({
         <p className="rounded-md p-4 text-sm text-muted-foreground">Loading {title.toLowerCase()}...</p>
       ) : (
         <div className="bg-white rounded-xl shadow overflow-hidden">
-          {filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-slate-400">
-              <AlertCircle className="w-6 h-6 mb-2 text-slate-300" />
-              <p className="text-sm font-medium">No matching items found.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left whitespace-nowrap text-sm">
-                {columns && columns.length > 0 && (
-                  <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
-                    <tr>
-                      {columns.map((col, idx) => (
-                        <th key={idx} className="px-4 py-3 font-semibold">{col}</th>
-                      ))}
-                      <th className="px-4 py-3 font-semibold text-center">Actions</th>
-                    </tr>
-                  </thead>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap text-sm">
+              {columns && columns.length > 0 && (
+                <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
+                  <tr>
+                    {columns.map((col, idx) => (
+                      <th key={idx} className="px-4 py-3 font-semibold">{col}</th>
+                    ))}
+                    <th className="px-4 py-3 font-semibold text-center">Actions</th>
+                  </tr>
+                </thead>
+              )}
+              <tbody>
+                {paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={(columns?.length || 0) + 1} className="px-4 py-8 text-center text-sm text-slate-500">
+                      <div className="flex flex-col items-center justify-center py-4 text-slate-400">
+                        <AlertCircle className="w-6 h-6 mb-2 text-slate-300" />
+                        <p className="text-sm font-medium">No {title.toLowerCase()} found.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((item, idx) => React.cloneElement(renderRow(item, openEdit, onRequestDelete) as React.ReactElement, { key: item.id || idx }))
                 )}
-                <tbody>
-                  {paginatedItems.map((item, idx) => React.cloneElement(renderRow(item, openEdit, onRequestDelete) as React.ReactElement, { key: item.id || idx }))}
-                </tbody>
-              </table>
-            </div>
-          )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination Footer */}
           <div className="px-6 py-4 flex flex-col md:flex-row items-center justify-between bg-slate-50/50 gap-4 border-t border-slate-100">

@@ -90,17 +90,9 @@ export default function BranchManagementComponent() {
     if (!deleteTargetBranchId) return;
     setIsDeletingBranch(true);
     try {
-      const response = await window.fetch(`/api/settings/branches/${String(deleteTargetBranchId).trim()}`, {
+      await adminFetch(`/api/settings/branches/${String(deleteTargetBranchId).trim()}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || `Server status: ${response.status}`);
-      }
       toast.success(t('adminBranchDeletedSuccess', 'Branch deleted successfully'));
       setDeletedBranchIds((prev) => [...prev, deleteTargetBranchId]);
       await reload?.();

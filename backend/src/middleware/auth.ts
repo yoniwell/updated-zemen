@@ -3,6 +3,7 @@ import { AdminRole } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 import { sendAuthInvalidError, sendAuthRequiredError, sendPermissionError } from '../utils/api-error';
+import { Permission, hasPermissionInRole } from '../common/auth/permissions';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -110,8 +111,41 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   }
 };
 
+export const requirePermission = (permission: Permission) => {
+  return (req: any, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      sendAuthRequiredError(res);
+      return;
+    }
+
+    if (!hasPermissionInRole(req.user.role, permission)) {
+      sendPermissionError(res, `Permission '${permission}' is required for this operation`);
+      return;
+    }
+
+    next();
+  };
+};
+
+export const requireAnyPermission = (...permissions: Permission[]) => {
+  return (req: any, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      sendAuthRequiredError(res);
+      return;
+    }
+
+    const hasAny = permissions.some((permission) => hasPermissionInRole(req.user!.role, permission));
+    if (!hasAny) {
+      sendPermissionError(res, 'Insufficient permissions for this operation');
+      return;
+    }
+
+    next();
+  };
+};
+
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction): void => {
+  return (req: any, res: Response, next: NextFunction): void => {
     if (!req.user) {
       sendAuthRequiredError(res);
       return;
@@ -141,8 +175,8 @@ type AdminModule =
 
 const defaultRoleModules: Record<AdminRole, AdminModule[]> = {
   SUPER_ADMIN: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'document-review', 'audit-log', 'cms', 'user-management', 'settings'],
-  BRANCH_MANAGER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'user-management'],
-  OFFICER: ['membership', 'members-list', 'loan', 'loans-list'],
+  BRANCH_MANAGER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list', 'audit-log'],
+  OFFICER: ['dashboard', 'membership', 'members-list', 'loan', 'loans-list'],
   CONTENT_MANAGER: ['cms'],
 };
 

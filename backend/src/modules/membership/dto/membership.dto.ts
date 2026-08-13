@@ -9,6 +9,7 @@ export interface ApplyMembershipDto {
   idNumber?: string;
   // Account details
   membershipPaymentAmount?: number;
+  membershipTransactionRef?: string;
   savingType?: string;
   savingPaymentAmount?: number;
   savingTransactionRef?: string;
@@ -32,6 +33,7 @@ export interface UpdateMembershipDto {
   branchId?: string;
   preferredBranch?: string;
   membershipPaymentAmount?: number;
+  membershipTransactionRef?: string;
   savingType?: string;
   savingPaymentAmount?: number;
   savingTransactionRef?: string;
