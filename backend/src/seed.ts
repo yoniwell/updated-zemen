@@ -4,98 +4,127 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting clean database seed (Core System & Product Configs only)...');
-
-  // Clean sample data from applications & CMS content tables
-  console.log('🧹 Cleaning sample application and CMS content records...');
-  await prisma.document.deleteMany();
-  await prisma.applicationNote.deleteMany();
-  await prisma.workflowHistory.deleteMany();
-  await prisma.membershipApplication.deleteMany();
-  await prisma.loanApplication.deleteMany();
-  await prisma.applicant.deleteMany();
-  await prisma.downloadFile.deleteMany();
-  await prisma.downloadCategory.deleteMany();
-  await prisma.cmsService.deleteMany();
-  await prisma.cmsSaving.deleteMany();
-  await prisma.cmsLoanProduct.deleteMany();
-  await prisma.cmsAnnouncement.deleteMany();
-  await prisma.cmsFaq.deleteMany();
-  await prisma.news.deleteMany();
-  await prisma.auditLog.deleteMany();
+  console.log('🌱 Seeding real website data (Branches, Staff Accounts, Product Configs & FAQs)...');
 
   // ==========================================
-  // 1. SEED BRANCHES
+  // 1. SEED REAL OPERATIONAL BRANCHES (9 Real Branches from Website)
   // ==========================================
-  console.log('📍 Seeding Operational Branches...');
+  console.log('📍 Seeding 9 Real Operational Branches from Frontend...');
+  
+  // Clear any old sample branch records first
+  await prisma.adminUser.updateMany({ data: { branchId: null } });
+  await prisma.branch.deleteMany();
+
   const branchesData = [
     {
       code: 'BR-001',
-      name: 'Addis Ababa HQ',
+      name: 'Mekelle Head Office',
+      location: 'Adi Hawesi, In front of IOM',
+      manager: 'Dr. Silas Omari',
+      status: 'OPERATIONAL',
+      phonePrimary: '0953444411',
+      phoneSecondary: '+251 34 440 5678',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3902.1!2d39.47!3d13.49!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sMekelle!5e0!3m2!1sen!2set!4v1710000000000',
+      published: true,
+    },
+    {
+      code: 'BR-002',
+      name: 'Mekelle Branch',
+      location: 'Kedamay Weyane, Marturs St.',
+      manager: 'Atsbeha Gebre',
+      status: 'OPERATIONAL',
+      phonePrimary: '0997344200',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3902.1!2d39.46!3d13.48!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2sKedamay%20Weyane!5e0!3m2!1sen!2set!4v1710000000000',
+      published: true,
+    },
+    {
+      code: 'BR-003',
+      name: 'Addis Abeba',
       location: 'Bole Medhanialem, Addis Ababa',
       manager: 'Aisha Hassan',
       status: 'OPERATIONAL',
       phonePrimary: '+251 11 661 2345',
       phoneSecondary: '+251 91 122 3344',
-      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM, Sat: 8:00 AM - 12:00 PM',
-      published: true,
-    },
-    {
-      code: 'BR-002',
-      name: 'Mekelle Head Office',
-      location: 'Adi Hawesi, In front of IOM, Mekelle',
-      manager: 'Dr. Silas Omari',
-      status: 'OPERATIONAL',
-      phonePrimary: '+251 34 440 5678',
-      phoneSecondary: '+251 91 433 2211',
-      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM, Sat: 8:00 AM - 12:00 PM',
-      published: true,
-    },
-    {
-      code: 'BR-003',
-      name: 'Hawassa Main Branch',
-      location: 'Piazza Square, Near Main Post Office, Hawassa',
-      manager: 'Bethlehem Tadesse',
-      status: 'OPERATIONAL',
-      phonePrimary: '+251 46 220 9988',
-      phoneSecondary: '+251 92 211 4455',
-      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3940.6128!2d38.7831!3d8.9953!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x164b850f9689f5c1%3A0x6a1c8b3f8e5c2d3a!2sBole%20Medhanialem%20Church!5e0!3m2!1sen!2set!4v1710000000000',
       published: true,
     },
     {
       code: 'BR-004',
-      name: 'Bahir Dar Branch',
-      location: 'Kebele 04, Next to Grand Hotel, Bahir Dar',
-      manager: 'Yonas Gebre',
+      name: 'Adigrat',
+      location: 'Main Road, Near Market Center',
+      manager: 'Girmay Berhe',
       status: 'OPERATIONAL',
-      phonePrimary: '+251 58 226 7711',
-      phoneSecondary: '+251 91 877 6655',
-      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM',
+      phonePrimary: '0997346200',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps?q=Adigrat,Ethiopia&output=embed',
       published: true,
     },
     {
       code: 'BR-005',
-      name: 'Dire Dawa Branch',
-      location: 'Kezira Business District, Dire Dawa',
-      manager: 'Mustafa Ahmed',
+      name: 'Adwa',
+      location: 'Central Avenue, Near Municipality',
+      manager: 'Teklehaimanot Kassa',
       status: 'OPERATIONAL',
-      phonePrimary: '+251 25 111 4433',
-      phoneSecondary: '+251 93 344 5566',
-      officeHours: 'Mon - Fri: 8:00 AM - 5:00 PM',
+      phonePrimary: '0997339200',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps?q=Adwa,Ethiopia&output=embed',
+      published: true,
+    },
+    {
+      code: 'BR-006',
+      name: 'Shire',
+      location: 'Downtown Service Zone',
+      manager: 'Haileselassie Kahsay',
+      status: 'OPERATIONAL',
+      phonePrimary: '0997343200',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps?q=Shire,Ethiopia&output=embed',
+      published: true,
+    },
+    {
+      code: 'BR-007',
+      name: 'AbiAdi',
+      location: 'Town Center, Service Corridor',
+      manager: 'Gebremeskel Tadesse',
+      status: 'OPERATIONAL',
+      phonePrimary: '0903212300',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps?q=Abi%20Adi,Ethiopia&output=embed',
+      published: true,
+    },
+    {
+      code: 'BR-008',
+      name: 'Rama',
+      location: 'Main Border Corridor',
+      manager: 'Solomon Welde',
+      status: 'OPERATIONAL',
+      phonePrimary: '0903351300',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps?q=Rama,Ethiopia&output=embed',
+      published: true,
+    },
+    {
+      code: 'BR-009',
+      name: 'Maychow',
+      location: 'Commercial District, Main Street',
+      manager: 'Mulugeta Abraha',
+      status: 'OPERATIONAL',
+      phonePrimary: '0903047300',
+      officeHours: 'Mon-Fri 8:30 AM - 5:30 PM',
+      mapUrl: 'https://www.google.com/maps?q=Maychew,Ethiopia&output=embed',
       published: true,
     },
   ];
 
   const branches = [];
   for (const b of branchesData) {
-    const branch = await prisma.branch.upsert({
-      where: { code: b.code },
-      update: { name: b.name, location: b.location, manager: b.manager, status: b.status, published: b.published },
-      create: b,
-    });
+    const branch = await prisma.branch.create({ data: b });
     branches.push(branch);
   }
-  console.log(`✅ Seeded ${branches.length} operational branches`);
+  console.log(`✅ Seeded ${branches.length} real operational branches`);
 
   // ==========================================
   // 2. SEED ADMIN USERS (ROLES & ACCOUNTS)
@@ -115,19 +144,19 @@ async function main() {
       isActive: true,
     },
     {
-      name: 'Addis Branch Manager',
-      email: 'bm.addis@zemen.com',
+      name: 'Mekelle Head Office Manager',
+      email: 'bm.mekelle@zemen.com',
       passwordHash: bmPassword,
       role: 'BRANCH_MANAGER' as const,
       branchId: branches[0].id,
       isActive: true,
     },
     {
-      name: 'Mekelle Branch Manager',
-      email: 'bm.mekelle@zemen.com',
+      name: 'Addis Abeba Branch Manager',
+      email: 'bm.addis@zemen.com',
       passwordHash: bmPassword,
       role: 'BRANCH_MANAGER' as const,
-      branchId: branches[1].id,
+      branchId: branches[2].id,
       isActive: true,
     },
     {
@@ -166,7 +195,7 @@ async function main() {
   const settingsData = [
     { key: 'organization_name', value: 'Zemen Savings & Credit Cooperative Society' },
     { key: 'contact_email', value: 'support@zemensacco.com' },
-    { key: 'primary_phone', value: '+251 11 661 2345' },
+    { key: 'primary_phone', value: '0953444411' },
     { key: 'default_currency', value: 'ETB' },
     { key: 'membership_fee_etb', value: '500' },
     { key: 'min_monthly_saving_etb', value: '300' },
@@ -226,11 +255,43 @@ async function main() {
   }
   console.log(`✅ Seeded ${loanTypesData.length} loan product configurations`);
 
-  console.log('\n🎉 Clean Core System Seed Completed Successfully!');
+  // ==========================================
+  // 6. SEED REAL FAQS FROM WEBSITE
+  // ==========================================
+  console.log('❓ Seeding Real FAQs from Website...');
+  const faqs = [
+    { question: 'Who can become a member of Zemen Cooperative?', answer: 'Any Ethiopian resident or community group above the age of 18 with a stable source of income or interest in saving can become a member. We welcome individuals, NGOs, and businesses who share our vision of mutual growth.', category: 'Membership' },
+    { question: 'What documents are required for membership?', answer: 'You will need a valid National Identity Card or Passport, two recent passport-sized photographs, and proof of your residential address (such as a utility bill or local government letter).', category: 'Membership' },
+    { question: 'How long does the membership approval take?', answer: 'Typically, the review and approval process for a new membership application takes between 2 to 3 business days once all required documents are submitted and verified.', category: 'Membership' },
+    { question: 'What KYC documents are mandatory for online applications?', answer: 'At minimum, applicants must provide a valid national ID or passport, a recent applicant photo, and proof of address when requested. For some loan products, additional documents such as bank statements, payslips, or business licenses are required.', category: 'KYC' },
+    { question: 'Can I track my application after submission?', answer: 'Yes. After submission, you receive a reference number that can be used to track status updates such as Under Review, Pending Documents, Approved, or Rejected.', category: 'General' },
+    { question: 'Can I apply for a loan immediately after joining?', answer: 'While some emergency products may be accessible sooner, most standard loan products require an active membership and a consistent savings history of at least 6 months to ensure financial stability and mutual trust.', category: 'Loans' },
+    { question: 'Why was my application marked as pending documents?', answer: 'This status usually means one or more uploaded files are missing, expired, unclear, or do not match your submitted details. Re-uploading valid documents typically resumes the review quickly.', category: 'General' },
+    { question: 'Can I apply for a loan or membership using my phone?', answer: 'Absolutely! Our website and digital application portal are fully optimized for mobile devices. You can complete forms, upload photos of your documents, and track your application status directly from your smartphone.', category: 'Digital Banking' },
+    { question: 'What are the interest rates for loans and savings?', answer: 'Interest rates vary based on the specific product and market conditions. However, we pride ourselves on offering competitive savings dividends that outperform traditional banks and fair, transparent interest rates for our loan products. Please contact a branch for the latest specific rates.', category: 'General' },
+    { question: 'Can I save my application and continue later?', answer: 'Yes, once you start an application, you can create a temporary account that allows you to save your progress. You will receive a link to your email to resume exactly where you left off.', category: 'Digital Banking' },
+    { question: 'How are loan decisions made?', answer: 'Loan decisions are based on eligibility, repayment capacity, document verification, and product policy limits. Final approval is completed by authorized officers after internal review checks.', category: 'Loans' },
+  ];
+
+  for (const f of faqs) {
+    const exists = await prisma.cmsFaq.findFirst({ where: { question: f.question } });
+    if (!exists) {
+      await prisma.cmsFaq.create({
+        data: { question: f.question, answer: f.answer, category: f.category, published: true },
+      });
+    }
+  }
+  console.log(`✅ Seeded ${faqs.length} real FAQs from website`);
+
+  console.log('\n🎉 Database Seed Completed Successfully with Real Website Branches & Content!');
+  console.log('----------------------------------------------------');
+  console.log('📍 Seeded Real Branches:');
+  branchesData.forEach(b => console.log(`  • ${b.name} (${b.location})`));
   console.log('----------------------------------------------------');
   console.log('🔑 Credentials to log in:');
   console.log('  • Super Admin: admin@zemen.com / admin123');
-  console.log('  • Branch Manager (Addis): bm.addis@zemen.com / bm123456');
+  console.log('  • Mekelle Manager: bm.mekelle@zemen.com / bm123456');
+  console.log('  • Addis Manager: bm.addis@zemen.com / bm123456');
   console.log('  • Credit Officer: officer@zemen.com / officer123');
   console.log('----------------------------------------------------');
 }
