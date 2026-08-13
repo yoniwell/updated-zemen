@@ -630,13 +630,13 @@ export default function MembershipPortal() {
                 {!otpVerified && (
                   <>
                     <Button type="button" onClick={() => void sendOtpCode(false)} disabled={otpBusy || resendInSeconds > 0}>
-                      {otpBusy ? 'Please wait...' : 'Send Code'}
+                      {otpBusy ? 'Please wait...' : tPublicUi('sendCode', 'Send Code')}
                     </Button>
                     <Button type="button" variant="outline" onClick={() => void sendOtpCode(true)} disabled={otpBusy || resendInSeconds > 0}>
-                      Resend Code {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
+                      {tPublicUi('resendCode', 'Resend Code')} {resendInSeconds > 0 ? `(${resendInSeconds}s)` : ''}
                     </Button>
                     <Button type="button" variant="outline" onClick={() => void verifyOtpCode()} disabled={otpBusy || !otpSent || otpLockedOut || otpExpiresInSeconds <= 0}>
-                      Verify OTP
+                      {tPublicUi('verifyOtp', 'Verify OTP')}
                     </Button>
                   </>
                 )}
@@ -857,13 +857,13 @@ export default function MembershipPortal() {
             </div>
           )}
 
-          <div className="mt-8 hidden items-center justify-between border-t border-slate-100 pt-5 md:flex">
+          <div className="mt-8 hidden justify-between border-t border-slate-100 pt-6 md:flex">
             <Button type="button" variant="outline" disabled={step === 1 || isSubmitting} onClick={() => setStep((prev) => prev - 1)}>
-              Previous
+              {tPublicUi('previous', 'Previous')}
             </Button>
 
             {step < 6 ? (
-              <Button type="button" onClick={onNext}>Next</Button>
+              <Button type="button" onClick={onNext}>{tPublicUi('next', 'Next')}</Button>
             ) : (
               <Button
                 type="submit"
@@ -872,7 +872,7 @@ export default function MembershipPortal() {
                   submitIntentRef.current = true;
                 }}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                {isSubmitting ? 'Submitting...' : tPublicUi('submitApplication', 'Submit Application')}
               </Button>
             )}
           </div>
@@ -885,29 +885,28 @@ export default function MembershipPortal() {
             <Button
               type="button"
               variant="outline"
-              className="h-11 min-w-[108px]"
+              className="h-11"
               disabled={isSubmitting}
               onClick={() => setStep((prev) => prev - 1)}
             >
-              Previous
+              {tPublicUi('previous', 'Previous')}
             </Button>
           )}
 
           {step < 6 ? (
-            <Button type="button" className="h-11 flex-1" disabled={isSubmitting} onClick={onNext}>
-              Next
+            <Button type="button" className="h-11 flex-1 font-bold" onClick={onNext}>
+              {tPublicUi('next', 'Next')}
             </Button>
           ) : (
             <Button
               type="submit"
-              form="membership-portal-form"
               className="h-11 flex-1"
               disabled={isSubmitting}
               onClick={() => {
                 submitIntentRef.current = true;
               }}
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
+              {isSubmitting ? 'Submitting...' : tPublicUi('submitApplication', 'Submit Application')}
             </Button>
           )}
         </div>

@@ -124,11 +124,11 @@ export default function Savings({ onNavigate }: SavingsProps) {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-blue-950 text-white text-[9px] sm:text-xs font-black uppercase tracking-wider border-b border-blue-900">
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">Saving Type</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">Membership Fee</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">Min Payment</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">Max Limit</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center">Action</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">{tPublic('savingTypeCol', 'Saving Type')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('membershipFeeCol', 'Membership Fee')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('minPaymentCol', 'Min Payment')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('maxLimitCol', 'Max Limit')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center">{tPublic('actionCol', 'Action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px] sm:text-xs md:text-sm">
@@ -157,7 +157,7 @@ export default function Savings({ onNavigate }: SavingsProps) {
                           onClick={() => onNavigate('apply')}
                           className="bg-blue-600 hover:bg-blue-950 text-white font-bold text-[9px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded transition-all shadow"
                         >
-                          Apply <ArrowRight className="ml-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          {tPublic('applyNow', 'Apply')} <ArrowRight className="ml-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                         </Button>
                       </td>
                     </tr>

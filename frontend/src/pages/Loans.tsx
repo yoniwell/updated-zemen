@@ -161,11 +161,11 @@ export default function Loans({ onNavigate }: LoansProps) {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-blue-950 text-white text-[9px] sm:text-xs font-black uppercase tracking-wider border-b border-blue-900">
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">Loan Type</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">Loan Range</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">Tenure</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center whitespace-nowrap">Interest</th>
-                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center">Action</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">{tPublic('loanTypeCol', 'Loan Type')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('loanRangeCol', 'Loan Range')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('tenureCol', 'Tenure')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center whitespace-nowrap">{tPublic('interestRateCol', 'Interest')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center">{tPublic('actionCol', 'Action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-[11px] sm:text-xs md:text-sm">
@@ -194,7 +194,7 @@ export default function Loans({ onNavigate }: LoansProps) {
                           onClick={() => navigate(`/loan-apply?type=${item.type}`)}
                           className="bg-blue-950 hover:bg-blue-800 text-white font-bold text-[9px] sm:text-xs px-2 py-0.5 sm:px-3 sm:py-1 rounded transition-all shadow"
                         >
-                          Apply <ArrowRight className="ml-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          {tPublic('applyNow', 'Apply')} <ArrowRight className="ml-1 h-2.5 w-2.5 sm:h-3 sm:w-3" />
                         </Button>
                       </td>
                     </tr>
