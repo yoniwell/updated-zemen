@@ -10,8 +10,8 @@ export class UsersRepository {
   }
 
   async findByEmail(email: string) {
-    return prisma.adminUser.findUnique({
-      where: { email },
+    return prisma.adminUser.findFirst({
+      where: { email: { equals: email.trim(), mode: 'insensitive' } },
     });
   }
 

@@ -11,6 +11,7 @@ export interface ApplyLoanDto {
   maritalStatus?: string;
   
   loanType?: string;
+  loanCategory?: string;
   amount: number;
   tenure?: number;
   

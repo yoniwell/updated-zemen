@@ -64,6 +64,7 @@ type DetailPayload = {
   membershipPaymentAmount?: number | null;
   membershipTransactionRef?: string | null;
   savingType?: string | null;
+  savingCategory?: string | null;
   savingPaymentAmount?: number | null;
   savingTransactionRef?: string | null;
 
@@ -76,6 +77,7 @@ type DetailPayload = {
   maritalStatus?: string | null;
   amount?: number | null;
   loanType?: string | null;
+  loanCategory?: string | null;
   tenure?: number | null;
 
   guarantorIdNumber?: string | null;
@@ -385,6 +387,7 @@ export default function ApplicationDetail() {
       { label: tAdmin('membershipPaymentAmountLabel', 'Membership Payment Amount'), value: application.membershipPaymentAmount },
       { label: tAdmin('membershipTransactionRefLabel', 'Membership Payment Ref'), value: application.membershipTransactionRef },
       { label: tAdmin('savingTypeLabel', 'Saving Type'), value: application.savingType },
+      { label: tAdmin('savingCategoryLabel', 'Saving Category'), value: application.savingCategory || 'Standard' },
       { label: tAdmin('savingPaymentAmountLabel', 'Saving Payment Amount'), value: application.savingPaymentAmount },
       { label: tAdmin('savingTransactionRefLabel', 'Saving Transaction Ref'), value: application.savingTransactionRef },
       { label: tAdmin('termsAcceptedStatusLabel', 'Terms Accepted'), value: application.termsAccepted },
@@ -396,6 +399,7 @@ export default function ApplicationDetail() {
       { label: tAdmin('idTypeLabel', 'ID Type'), value: application.idType },
       { label: tAdmin('maritalStatusLabel', 'Marital Status'), value: application.maritalStatus },
       { label: tAdmin('loanTypeLabel', 'Loan Type'), value: application.loanType },
+      { label: tAdmin('loanCategoryLabel', 'Loan Category'), value: application.loanCategory || 'Standard' },
       { label: tAdmin('branchLabel', 'Preferred Branch'), value: application.branch?.name },
       { label: tAdmin('requestedAmountEtbLabel', 'Requested Amount (ETB)'), value: application.amount },
       { label: tAdmin('requestedTenureMonthsLabel', 'Requested Tenure (Months)'), value: application.tenure },

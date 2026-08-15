@@ -50,6 +50,7 @@ export class MembershipService {
       membershipPaymentAmount: dto.membershipPaymentAmount,
       membershipTransactionRef: (dto as any).membershipTransactionRef,
       savingType: dto.savingType,
+      savingCategory: dto.savingCategory || (dto as any).savingCategory || 'Standard',
       savingPaymentAmount: dto.savingPaymentAmount,
       savingTransactionRef: dto.savingTransactionRef,
     };
@@ -204,6 +205,7 @@ export class MembershipService {
     if (dto.membershipPaymentAmount !== undefined) updatePayload.membershipPaymentAmount = dto.membershipPaymentAmount;
     if ((dto as any).membershipTransactionRef !== undefined) updatePayload.membershipTransactionRef = (dto as any).membershipTransactionRef;
     if (dto.savingType !== undefined) updatePayload.savingType = dto.savingType;
+    if (dto.savingCategory !== undefined) updatePayload.savingCategory = dto.savingCategory;
     if (dto.savingPaymentAmount !== undefined) updatePayload.savingPaymentAmount = dto.savingPaymentAmount;
     if (dto.savingTransactionRef !== undefined) updatePayload.savingTransactionRef = dto.savingTransactionRef;
 

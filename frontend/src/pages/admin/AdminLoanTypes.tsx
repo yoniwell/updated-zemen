@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { adminFetch } from '@/lib/adminApi';
 import { Plus, Edit2, Pencil, Trash2, CheckCircle2, XCircle, DollarSign, Clock } from 'lucide-react';
@@ -7,6 +7,7 @@ import ConfirmDeleteModal from '@/components/admin/ConfirmDeleteModal';
 interface LoanType {
   id: string;
   name: string;
+  category?: string | null;
   isActive: boolean;
   minAmount?: number | null;
   maxAmount?: number | null;
@@ -27,6 +28,7 @@ export default function AdminLoanTypes() {
 
   // Form State
   const [name, setName] = useState('');
+  const [category, setCategory] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
@@ -48,16 +50,22 @@ export default function AdminLoanTypes() {
     fetchLoanTypes();
   }, []);
 
+  const distinctTypeNames = useMemo(() => {
+    return Array.from(new Set(loanTypes.map((lt) => lt.name).filter(Boolean))).sort();
+  }, [loanTypes]);
+
   const openModal = (type: LoanType | null = null) => {
     setEditingType(type);
     if (type) {
       setName(type.name);
+      setCategory(type.category || '');
       setIsActive(type.isActive);
       setMinAmount(type.minAmount != null ? String(type.minAmount) : '');
       setMaxAmount(type.maxAmount != null ? String(type.maxAmount) : '');
       setTenure(type.maxTenure != null ? String(type.maxTenure) : '');
     } else {
       setName('');
+      setCategory('');
       setIsActive(true);
       setMinAmount('');
       setMaxAmount('');
@@ -66,13 +74,28 @@ export default function AdminLoanTypes() {
     setShowModal(true);
   };
 
+  const openModalForNewTier = (presetName: string) => {
+    setEditingType(null);
+    setName(presetName);
+    setCategory('');
+    setIsActive(true);
+    setMinAmount('');
+    setMaxAmount('');
+    setTenure('');
+    setShowModal(true);
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setEditingType(null);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e: React.FormEvent | null, andAddAnother = false) => {
+    if (e) e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Please enter a loan type name');
+      return;
+    }
 
     const minA = minAmount !== '' ? parseFloat(minAmount) : null;
     const maxA = maxAmount !== '' ? parseFloat(maxAmount) : null;
@@ -84,7 +107,8 @@ export default function AdminLoanTypes() {
     }
 
     const payload = {
-      name,
+      name: name.trim(),
+      category: category.trim() || null,
       isActive,
       minAmount: minA,
       maxAmount: maxA,
@@ -100,17 +124,26 @@ export default function AdminLoanTypes() {
           body: JSON.stringify(payload),
         });
         toast.success('Loan type updated successfully');
+        closeModal();
       } else {
         await adminFetch('/api/settings/loan-types', {
           method: 'POST',
           body: JSON.stringify(payload),
         });
-        toast.success('Loan type created successfully');
+        if (andAddAnother) {
+          toast.success(`Tier "${payload.category || 'Standard'}" saved for "${payload.name}"! Ready to add next tier.`);
+          setCategory('');
+          setMinAmount('');
+          setMaxAmount('');
+          setTenure('');
+        } else {
+          toast.success('Loan type created successfully');
+          closeModal();
+        }
       }
-      closeModal();
       fetchLoanTypes();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save loan type');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save loan type');
     } finally {
       setSaving(false);
     }
@@ -162,6 +195,7 @@ export default function AdminLoanTypes() {
               <thead className="bg-slate-900 text-white font-semibold uppercase text-xs">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Name</th>
+                  <th className="px-4 py-3 font-semibold">Category</th>
                   <th className="px-4 py-3 font-semibold">Amount Range (ETB)</th>
                   <th className="px-4 py-3 font-semibold">Tenure (months)</th>
                   <th className="px-4 py-3 font-semibold">Status</th>
@@ -171,7 +205,7 @@ export default function AdminLoanTypes() {
               <tbody>
                 {loanTypes.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-12 text-center text-slate-400 font-medium">
+                    <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
                       No loan types found. Create one to get started.
                     </td>
                   </tr>
@@ -179,6 +213,11 @@ export default function AdminLoanTypes() {
                   loanTypes.slice((page - 1) * 10, page * 10).map((type) => (
                     <tr key={type.id} className="even:bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => openModal(type)}>
                       <td className="px-4 py-3 font-bold text-slate-900">{type.name}</td>
+                      <td className="px-4 py-3 font-semibold text-blue-700">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-100">
+                          {type.category || 'Standard'}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         {type.minAmount != null || type.maxAmount != null ? (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
@@ -211,20 +250,27 @@ export default function AdminLoanTypes() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-6">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => openModalForNewTier(type.name)}
+                            className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                            title={`Add another category tier for ${type.name}`}
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Tier
+                          </button>
                           <button
                             onClick={() => openModal(type)}
-                            className="text-slate-400 hover:text-blue-600 transition-colors"
+                            className="text-slate-400 hover:text-blue-600 transition-colors p-1"
                             title="Edit"
                           >
-                            <Pencil className="w-5 h-5" />
+                            <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => setDeleteTargetId(type.id)}
-                            className="text-slate-400 hover:text-red-600 transition-colors"
+                            className="text-slate-400 hover:text-red-600 transition-colors p-1"
                             title="Delete"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -269,28 +315,35 @@ export default function AdminLoanTypes() {
             {/* Modal header */}
             <div className="border-b border-slate-100 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
               <h2 className="text-lg font-black text-white">
-                {editingType ? 'Edit' : 'Add'} Loan Type
+                {editingType ? 'Edit' : 'Add'} Loan Type / Category Tier
               </h2>
               <p className="text-xs text-blue-100 mt-0.5">
-                Configure name, amount range, and tenure options for this loan type.
+                Configure name, category tier, amount range, and tenure options for this loan type.
               </p>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-5">
+            <form onSubmit={(e) => handleSave(e, false)} className="p-6 space-y-5">
               {/* Name & Status row */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2">
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
-                    Name <span className="text-red-500">*</span>
+                    Loan Type Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
+                    list="loan-name-suggestions"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     placeholder="e.g. Personal Loan"
                   />
+                  <datalist id="loan-name-suggestions">
+                    {distinctTypeNames.map((n) => (
+                      <option key={n} value={n} />
+                    ))}
+                  </datalist>
+                  <p className="mt-1 text-[11px] text-slate-400">You can use an existing loan type name to add another category tier.</p>
                 </div>
                 <div className="flex flex-col justify-end">
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -307,6 +360,21 @@ export default function AdminLoanTypes() {
                     <span className="text-sm font-bold text-slate-700">Active</span>
                   </label>
                 </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Category / Tier Name
+                </label>
+                <input
+                  type="text"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  placeholder="e.g. Salary Advance, Commercial, Asset (default: Standard)"
+                />
+                <p className="mt-1 text-[11px] text-slate-400">Defaults to &apos;Standard&apos; if left empty.</p>
               </div>
 
               {/* Amount Range */}
@@ -365,20 +433,30 @@ export default function AdminLoanTypes() {
               </div>
 
               {/* Actions */}
-              <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+              <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-lg px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="rounded-lg px-3.5 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Cancel
                 </button>
+                {!editingType && (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={(e) => handleSave(e, true)}
+                    className="rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors shadow-sm"
+                  >
+                    {saving ? 'Saving...' : '+ Save & Add Another Tier'}
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 transition-colors shadow-sm"
                 >
-                  {saving ? 'Saving…' : 'Save Loan Type'}
+                  {saving ? 'Saving…' : editingType ? 'Update Tier' : 'Save & Close'}
                 </button>
               </div>
             </form>

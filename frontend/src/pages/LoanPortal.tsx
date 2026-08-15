@@ -16,10 +16,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { FileText, ExternalLink, CheckCircle2, Upload } from 'lucide-react';
 
-const stepFields: Record<number, (keyof LoanFormInput)[]> = {
+const stepFields: Record<number, Array<keyof LoanFormInput>> = {
   1: ['email', 'otpCode'],
   2: ['firstName', 'fathersName', 'grandfathersName', 'membershipNo', 'phone', 'idType', 'idNumber', 'maritalStatus'],
-  3: ['loanType', 'branchId', 'amount', 'tenure'],
+  3: ['loanType', 'loanCategory', 'branchId', 'amount', 'tenure'],
   4: ['loanApplicationLetter', 'loanRequestForm', 'personalPhoto', 'idFrontPhoto', 'idBackPhoto', 'marriageCertificate'],
   5: ['collateralType', 'collateralDocument', 'collateralDesc'],
   6: ['businessPlan'],
@@ -120,6 +120,7 @@ export default function LoanPortal() {
       idNumber: '',
       maritalStatus: 'SINGLE',
       loanType: preselectedType || '',
+      loanCategory: 'Standard',
       branchId: '',
       amount: 0,
       tenure: 12,
@@ -139,12 +140,41 @@ export default function LoanPortal() {
 
   const values = watch();
 
-  // Derive constraints for the currently selected loan type (must be after useForm)
-  const selectedLoanTypeName = values.loanType;
-  const selectedLoanType = useMemo(
-    () => loanTypes.find((lt) => lt.name === selectedLoanTypeName) ?? null,
-    [loanTypes, selectedLoanTypeName]
-  );
+  const distinctLoanTypeNames = useMemo(() => {
+    const names = new Set<string>();
+    loanTypes.forEach((lt) => {
+      if (lt.name?.trim()) names.add(lt.name.trim());
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [loanTypes]);
+
+  const availableCategoriesForSelectedLoan = useMemo(() => {
+    if (!values.loanType) return [];
+    const matching = loanTypes.filter(
+      (lt) => lt.name.toLowerCase().trim() === values.loanType.toLowerCase().trim()
+    );
+    const cats = new Set<string>();
+    matching.forEach((lt) => {
+      cats.add(lt.category?.trim() || 'Standard');
+    });
+    return Array.from(cats);
+  }, [loanTypes, values.loanType]);
+
+  const selectedLoanType = useMemo(() => {
+    if (!values.loanType) return null;
+    const targetCategory = values.loanCategory?.trim() || 'Standard';
+
+    const exactMatch = loanTypes.find(
+      (lt) =>
+        lt.name.toLowerCase().trim() === values.loanType.toLowerCase().trim() &&
+        (lt.category?.trim() || 'Standard').toLowerCase() === targetCategory.toLowerCase()
+    );
+    if (exactMatch) return exactMatch;
+
+    return loanTypes.find(
+      (lt) => lt.name.toLowerCase().trim() === values.loanType.toLowerCase().trim()
+    ) || null;
+  }, [loanTypes, values.loanType, values.loanCategory]);
 
   // If a maxTenure is set, it's the fixed tenure.
   // Falls back to genericTenures if the loan type has no fixed tenure.
@@ -153,6 +183,18 @@ export default function LoanPortal() {
     if (fixed != null) return [fixed];
     return genericTenures;
   }, [selectedLoanType]);
+
+  useEffect(() => {
+    if (!values.loanType) return;
+    const categories = availableCategoriesForSelectedLoan;
+    if (categories.length > 0) {
+      if (!values.loanCategory || !categories.includes(values.loanCategory)) {
+        setValue('loanCategory', categories[0]);
+      }
+    } else {
+      setValue('loanCategory', 'Standard');
+    }
+  }, [values.loanType, availableCategoriesForSelectedLoan, values.loanCategory, setValue]);
 
   // Auto-set the tenure if there's only one option (i.e. it's fixed)
   useEffect(() => {
@@ -257,55 +299,55 @@ export default function LoanPortal() {
   ];
 
   const summaryRows = useMemo(() => {
+    const selectedBranch = branchOptions.find((b) => b.id === values.branchId);
     return [
-      [tPublicUi('email', 'Email'), values.email],
-      [tPublicUi('name', 'Name'), `${values.firstName} ${values.fathersName || ''} ${values.grandfathersName}`.trim()],
-      [tPublicUi('membershipNo', 'Membership No'), values.membershipNo],
-      [tPublicUi('phone', 'Phone Number'), values.phone],
-      [tPublicUi('idType', 'ID Type'), values.idType],
-      [tPublicUi('maritalStatus', 'Marital Status'), values.maritalStatus],
-      [tPublicUi('loanType', 'Loan Type'), values.loanType],
-      [tPublicUi('branchId', 'Branch'), branchOptions.find((b) => b.id === values.branchId)?.name || values.branchId],
-      [tPublicUi('amount', 'Amount (ETB)'), values.amount ? `ETB ${values.amount.toLocaleString()}` : '-'],
+      [tPublicUi('fullName', 'Full Name'), `${values.firstName || ''} ${values.fathersName || ''} ${values.grandfathersName || ''}`.trim()],
+      [tPublicUi('email', 'Email Address'), values.email || '-'],
+      [tPublicUi('phone', 'Phone Number'), values.phone || '-'],
+      [tPublicUi('membershipNo', 'Membership Number'), values.membershipNo || '-'],
+      [tPublicUi('idType', 'ID Type'), values.idType || '-'],
+      [tPublicUi('maritalStatus', 'Marital Status'), values.maritalStatus || '-'],
+      [tPublicUi('preferredBranch', 'Preferred Branch'), selectedBranch ? selectedBranch.name : (values.branchId || '-')],
+      [tPublicUi('loanType', 'Loan Product'), values.loanType || '-'],
+      [tPublicUi('loanCategory', 'Loan Category / Tier'), values.loanCategory || selectedLoanType?.category || (values.loanType ? 'Standard' : '-')],
+      [tPublicUi('loanAmount', 'Loan Amount (ETB)'), values.amount ? `${Number(values.amount).toLocaleString()} ETB` : '-'],
       [tPublicUi('tenure', 'Tenure (months)'), values.tenure ? `${values.tenure} ${tPublicUi('months', 'months')}` : '-'],
-      [tPublicUi('collateralType', 'Collateral Type'), values.collateralType],
+      [tPublicUi('collateralType', 'Collateral Type'), values.collateralType || '-'],
       [tPublicUi('businessPlan', 'Business Plan'), values.businessPlan ? tPublicUi('submitted', 'Submitted') : '-'],
     ];
-  }, [tPublicUi, values, branchOptions]);
-
-  const selectedLoanTypeObj = useMemo(() => {
-    return loanTypes.find((lt) => lt.name === values.loanType || lt.id === values.loanType);
-  }, [loanTypes, values.loanType]);
+  }, [tPublicUi, values, branchOptions, selectedLoanType]);
 
   const loanAmountValidationError = useMemo(() => {
-    if (!selectedLoanTypeObj) return undefined;
+    if (!selectedLoanType) return undefined;
     const amtVal = values.amount;
     if (amtVal === undefined || amtVal === null || String(amtVal).trim() === '') return undefined;
     const amt = Number(amtVal);
     if (isNaN(amt)) return 'Please enter a valid numeric amount';
-    if (selectedLoanTypeObj.minAmount != null && amt < selectedLoanTypeObj.minAmount) {
-      return `Loan amount must be at least ${selectedLoanTypeObj.minAmount.toLocaleString()} ETB for ${selectedLoanTypeObj.name}`;
+    const tierName = `${selectedLoanType.name} (${selectedLoanType.category || 'Standard'})`;
+    if (selectedLoanType.minAmount != null && amt < selectedLoanType.minAmount) {
+      return `Loan amount must be at least ${selectedLoanType.minAmount.toLocaleString()} ETB for ${tierName}`;
     }
-    if (selectedLoanTypeObj.maxAmount != null && amt > selectedLoanTypeObj.maxAmount) {
-      return `Loan amount cannot exceed ${selectedLoanTypeObj.maxAmount.toLocaleString()} ETB for ${selectedLoanTypeObj.name}`;
+    if (selectedLoanType.maxAmount != null && amt > selectedLoanType.maxAmount) {
+      return `Loan amount cannot exceed ${selectedLoanType.maxAmount.toLocaleString()} ETB for ${tierName}`;
     }
     return undefined;
-  }, [selectedLoanTypeObj, values.amount]);
+  }, [selectedLoanType, values.amount]);
 
   const loanTenureValidationError = useMemo(() => {
-    if (!selectedLoanTypeObj) return undefined;
-    const tenVal = values.tenure;
-    if (tenVal === undefined || tenVal === null || String(tenVal).trim() === '') return undefined;
-    const ten = Number(tenVal);
-    if (isNaN(ten)) return 'Please enter a valid tenure';
-    if (selectedLoanTypeObj.minTenure != null && ten < selectedLoanTypeObj.minTenure) {
-      return `Loan tenure must be at least ${selectedLoanTypeObj.minTenure} months for ${selectedLoanTypeObj.name}`;
+    if (!selectedLoanType) return undefined;
+    const tenureVal = values.tenure;
+    if (tenureVal === undefined || tenureVal === null || String(tenureVal).trim() === '') return undefined;
+    const tenureNum = Number(tenureVal);
+    if (isNaN(tenureNum)) return 'Please enter a valid numeric tenure in months';
+    const tierName = `${selectedLoanType.name} (${selectedLoanType.category || 'Standard'})`;
+    if (selectedLoanType.minTenure != null && tenureNum < selectedLoanType.minTenure) {
+      return `Loan tenure must be at least ${selectedLoanType.minTenure} months for ${tierName}`;
     }
-    if (selectedLoanTypeObj.maxTenure != null && ten > selectedLoanTypeObj.maxTenure) {
-      return `Loan tenure cannot exceed ${selectedLoanTypeObj.maxTenure} months for ${selectedLoanTypeObj.name}`;
+    if (selectedLoanType.maxTenure != null && tenureNum > selectedLoanType.maxTenure) {
+      return `Loan tenure cannot exceed ${selectedLoanType.maxTenure} months for ${tierName}`;
     }
     return undefined;
-  }, [selectedLoanTypeObj, values.tenure]);
+  }, [selectedLoanType, values.tenure]);
 
   const errorText = (field: keyof LoanFormInput): string | undefined => {
     if (field === 'amount' && loanAmountValidationError) {
@@ -314,12 +356,12 @@ export default function LoanPortal() {
     if (field === 'tenure' && loanTenureValidationError) {
       return loanTenureValidationError;
     }
-    const message = errors[field]?.message;
-    return typeof message === 'string' ? message : undefined;
+    const msg = errors[field]?.message;
+    return typeof msg === 'string' ? msg : undefined;
   };
 
   const setUploadedFile = (field: LoanFileField, file: File | null) => {
-    setValue(field, file ? file.name : '', { shouldValidate: true, shouldTouch: true });
+    setValue(field, file ? file.name : '', { shouldValidate: true, shouldDirty: true });
     setUploadedFiles((prev) => {
       const next = { ...prev };
       if (file) {
@@ -376,6 +418,7 @@ export default function LoanPortal() {
         phone: data.phone,
         email: data.email,
         loanType: data.loanType,
+        loanCategory: data.loanCategory || selectedLoanType?.category || (data.loanType ? 'Standard' : undefined),
         amount: data.amount,
         tenure: data.tenure,
         branchId: resolvedBranchId,
@@ -686,13 +729,52 @@ export default function LoanPortal() {
           {/* Step 3: Loan Info */}
           {step === 3 && (
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={tPublicUi('loanType', 'Loan Type')} error={errorText('loanType')}>
-                <select className="h-11 w-full rounded-md border border-slate-300 px-3" {...register('loanType')}>
-                  <option value="" disabled>Select loan type</option>
-                  {loanTypes.map(lt => (
-                    <option key={lt.id} value={lt.name}>{lt.name}</option>
+              <Field label={tPublicUi('loanType', 'Loan Product')} error={errorText('loanType')}>
+                <select
+                  className="h-11 w-full rounded-md border border-slate-300 px-3 font-semibold text-slate-800"
+                  {...register('loanType')}
+                  onChange={(e) => {
+                    const selectedVal = e.target.value;
+                    setValue('loanType', selectedVal);
+                    const matchingCats = loanTypes
+                      .filter((lt) => lt.name.toLowerCase().trim() === selectedVal.toLowerCase().trim())
+                      .map((lt) => lt.category?.trim() || 'Standard');
+                    if (matchingCats.length > 0) {
+                      setValue('loanCategory', matchingCats[0]);
+                    }
+                  }}
+                >
+                  <option value="" disabled>Select loan product</option>
+                  {distinctLoanTypeNames.map((ltName) => (
+                    <option key={ltName} value={ltName}>{ltName}</option>
                   ))}
                 </select>
+              </Field>
+
+              {/* Loan Category Dropdown */}
+              <Field label={tPublicUi('loanCategory', 'Loan Category / Tier')} error={errorText('loanCategory')}>
+                <select
+                  className="h-11 w-full rounded-md border border-slate-300 px-3 font-semibold text-slate-800"
+                  {...register('loanCategory')}
+                  disabled={!values.loanType || availableCategoriesForSelectedLoan.length <= 1}
+                  value={values.loanCategory || (availableCategoriesForSelectedLoan[0] ?? 'Standard')}
+                  onChange={(e) => setValue('loanCategory', e.target.value)}
+                >
+                  {availableCategoriesForSelectedLoan.length === 0 ? (
+                    <option value="Standard">Standard</option>
+                  ) : (
+                    availableCategoriesForSelectedLoan.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))
+                  )}
+                </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {values.loanType 
+                    ? availableCategoriesForSelectedLoan.length > 1
+                      ? `Select from ${availableCategoriesForSelectedLoan.length} available category tiers for ${values.loanType}.`
+                      : `Category tier: ${availableCategoriesForSelectedLoan[0] || 'Standard'}`
+                    : 'Select a loan product above to choose category tier.'}
+                </p>
               </Field>
               <Field label={tPublicUi('branchId', 'Preferred Branch')} error={errorText('branchId')}>
                 <select className="h-11 w-full rounded-md border border-slate-300 px-3" {...register('branchId')}>

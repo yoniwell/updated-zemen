@@ -56,6 +56,7 @@ export default function Savings({ onNavigate }: SavingsProps) {
       return configTypes.map((config) => ({
         id: config.id,
         name: config.name,
+        category: config.category || 'Standard',
         minAmount: config.minAmount ?? null,
         maxAmount: config.maxAmount ?? null,
         membershipFee: config.membershipFee ?? null,
@@ -65,6 +66,7 @@ export default function Savings({ onNavigate }: SavingsProps) {
     return cmsServices.map((service) => ({
       id: service.id,
       name: service.title,
+      category: 'Standard',
       minAmount: null,
       maxAmount: null,
       membershipFee: null,
@@ -203,6 +205,7 @@ export default function Savings({ onNavigate }: SavingsProps) {
                 <thead>
                   <tr className="bg-blue-950 text-white text-[9px] sm:text-xs font-black uppercase tracking-wider border-b border-blue-900">
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">{tPublic('savingTypeCol', 'Saving Type')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">{tPublic('categoryCol', 'Category')}</th>
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('membershipFeeCol', 'Membership Fee')}</th>
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('minPaymentCol', 'Min Payment')}</th>
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('maxLimitCol', 'Max Limit')}</th>
@@ -219,6 +222,11 @@ export default function Savings({ onNavigate }: SavingsProps) {
                           </div>
                           <span>{item.name}</span>
                         </div>
+                      </td>
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 font-semibold text-blue-700 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-blue-700 border border-blue-100">
+                          {item.category || 'Standard'}
+                        </span>
                       </td>
                       <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right font-extrabold text-blue-950 whitespace-nowrap">
                         {item.membershipFee != null ? `${item.membershipFee.toLocaleString()} ETB` : '500 ETB'}
@@ -242,7 +250,7 @@ export default function Savings({ onNavigate }: SavingsProps) {
                   ))}
                   {savingsList.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-500 font-medium text-xs">
+                      <td colSpan={6} className="py-6 text-center text-slate-500 font-medium text-xs">
                         Loading saving types...
                       </td>
                     </tr>

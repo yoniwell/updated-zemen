@@ -29,6 +29,7 @@ export const membershipSchema = z.object({
   membershipPaymentProofName: z.string().min(1, 'Please upload proof of membership payment receipt'),
 
   savingType: z.string().min(1, 'Please select a saving type'),
+  savingCategory: z.string().optional(),
   savingPaymentAmount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
     return Number(v);
@@ -48,5 +49,5 @@ export const membershipStepSchemas = {
   2: membershipSchema.pick({ phone: true, firstName: true, fathersName: true, grandfathersName: true }),
   3: membershipSchema.pick({ idType: true, idNumber: true, idFrontName: true, idBackName: true }),
   4: membershipSchema.pick({ applicantPhotoName: true, filledFormName: true }),
-  5: membershipSchema.pick({ membershipPaymentAmount: true, membershipTransactionRef: true, membershipPaymentProofName: true, savingType: true, savingPaymentAmount: true, savingTransactionRef: true, savingProofName: true, preferredBranch: true, termsAccepted: true }),
+  5: membershipSchema.pick({ membershipPaymentAmount: true, membershipTransactionRef: true, membershipPaymentProofName: true, savingType: true, savingCategory: true, savingPaymentAmount: true, savingTransactionRef: true, savingProofName: true, preferredBranch: true, termsAccepted: true }),
 };

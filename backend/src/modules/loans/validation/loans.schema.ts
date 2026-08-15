@@ -13,6 +13,7 @@ export const applyLoanSchema = z.object({
   maritalStatus: z.string().optional(),
   
   loanType: z.string().optional(),
+  loanCategory: z.string().optional(),
   amount: z.number().optional(),
   tenure: z.number().optional(),
   

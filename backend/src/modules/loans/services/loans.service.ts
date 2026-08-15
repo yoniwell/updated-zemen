@@ -48,6 +48,7 @@ export class LoansService {
       status: 'SUBMITTED',
       membershipNo: dto.membershipNo,
       loanType: dto.loanType as any,
+      loanCategory: dto.loanCategory || (dto as any).loanCategory || 'Standard',
       amount: dto.amount,
       tenure: dto.tenure,
       idType: dto.idType,

@@ -63,6 +63,7 @@ model MembershipApplication {
   savingPaymentAmount     Float?
   savingTransactionRef    String?
   savingType              String?
+  savingCategory          String?
   notes                   ApplicationNote[]
   documents               Document[]
   applicant               Applicant         @relation(fields: [applicantId], references: [id])
@@ -83,6 +84,7 @@ model LoanApplication {
   membershipNo   String?
   status         ApplicationStatus @default(SUBMITTED)
   loanType       String?
+  loanCategory   String?
   amount         Float?
   tenure         Int?
   collateralType String?
@@ -150,6 +152,7 @@ model AdminUser {
   notes               ApplicationNote[]
   auditLogs           AuditLog[]
   authSessions        AuthSession[]
+  passwordResetTokens PasswordResetToken[]
   verifiedDocuments   Document[]              @relation("DocumentVerifier")
   assignedLoans       LoanApplication[]       @relation("LoanAssigned")
   assignedMemberships MembershipApplication[] @relation("MembershipAssigned")
@@ -399,6 +402,21 @@ model AuthSession {
   @@map("auth_sessions")
 }
 
+model PasswordResetToken {
+  id        String     @id @default(uuid())
+  userId    String
+  tokenHash String     @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime   @default(now())
+  user      AdminUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, usedAt])
+  @@map("password_reset_tokens")
+}
+
 model BackgroundJobQueue {
   id          String    @id @default(uuid())
   type        String
@@ -441,7 +459,8 @@ enum ApplicationStatus {
 
 model SavingTypeConfig {
   id            String   @id @default(uuid())
-  name          String   @unique
+  name          String
+  category      String?  @default("Standard") // category for grouping or classification (e.g. Regular, Children, Time Deposit)
   isActive      Boolean  @default(true)
   minAmount     Float?   // minimum saving amount in ETB
   maxAmount     Float?   // maximum saving amount in ETB
@@ -449,12 +468,15 @@ model SavingTypeConfig {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@unique([name, category])
+  @@index([name])
   @@map("saving_type_configs")
 }
 
 model LoanTypeConfig {
   id          String   @id @default(uuid())
-  name        String   @unique
+  name        String
+  category    String?  @default("Standard") // category for grouping or classification (e.g. Personal, Business, Asset, Emergency)
   isActive    Boolean  @default(true)
   minAmount   Float?   // minimum loan amount in ETB
   maxAmount   Float?   // maximum loan amount in ETB
@@ -463,6 +485,8 @@ model LoanTypeConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@unique([name, category])
+  @@index([name])
   @@map("loan_type_configs")
 }
 

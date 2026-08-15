@@ -14,3 +14,19 @@ export const inviteAcceptSchema = z.object({
 export const verifyEmailSchema = z.object({
   verificationToken: z.string().length(32, 'Invalid verification token format'),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+export const verifyResetTokenSchema = z.object({
+  token: z.string().min(10, 'Reset token is required'),
+  email: z.string().email('Invalid email address'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(10, 'Reset token is required'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+

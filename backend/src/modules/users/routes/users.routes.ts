@@ -23,6 +23,7 @@ export const createUsersRoutes = (usersController: UsersController): Router => {
   router.delete('/:id', requirePermission('users:write'), usersController.deleteUser);
   router.patch('/:id/password', requirePermission('users:write'), usersController.resetPassword);
   router.post('/:id/invite', requirePermission('users:write'), usersController.inviteUser);
+  router.post('/:id/send-reset-link', requirePermission('users:write'), usersController.sendResetLink);
 
   return router;
 };

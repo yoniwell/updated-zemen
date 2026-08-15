@@ -1,4 +1,4 @@
-import { Plus, RefreshCcw, Search, Pencil, Trash2, KeyRound, ShieldAlert } from 'lucide-react';
+import { Plus, RefreshCcw, Search, Pencil, Trash2, KeyRound, ShieldAlert, Copy, Check, Send, ExternalLink } from 'lucide-react';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { adminFetch } from '@/lib/adminApi';
@@ -118,7 +118,8 @@ export default function UserManagement() {
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [resetPassword, setResetPassword] = useState('');
   const [resetSubmitting, setResetSubmitting] = useState(false);
-
+  const [resetLinkResult, setResetLinkResult] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
@@ -308,6 +309,33 @@ export default function UserManagement() {
     }
   };
 
+  const handleSendResetLink = async () => {
+    if (!resetTarget) return;
+    setResetSubmitting(true);
+    try {
+      const res = await adminFetch<{ success: boolean; message: string; resetUrl: string }>(
+        `/api/users/${resetTarget.id}/send-reset-link`,
+        { method: 'POST' }
+      );
+      toast.success(res.message || 'Password reset link sent to staff email');
+      if (res.resetUrl) {
+        setResetLinkResult(res.resetUrl);
+      }
+    } catch (error) {
+      toastApiError(error, 'Failed to dispatch password reset link');
+    } finally {
+      setResetSubmitting(false);
+    }
+  };
+
+  const handleCopyResetLink = () => {
+    if (!resetLinkResult) return;
+    navigator.clipboard.writeText(resetLinkResult);
+    setCopiedLink(true);
+    toast.success('Reset link copied to clipboard');
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   const handleResetPassword = async () => {
     if (!resetTarget) {
       return;
@@ -327,6 +355,7 @@ export default function UserManagement() {
       toast.success(`${tAdmin('passwordResetFor', 'Password reset for')} ${resetTarget.name}`);
       setResetTarget(null);
       setResetPassword('');
+      setResetLinkResult(null);
     } catch (error) {
       toastApiError(error, tAdmin('failedToResetPassword', 'Failed to reset password'));
     } finally {
@@ -718,18 +747,105 @@ export default function UserManagement() {
 </Dialog>
 
 {/* Reset Password Dialog */}
-<Dialog open={Boolean(resetTarget)} onOpenChange={open => !open && setResetTarget(null)}>
-  <DialogContent>
+<Dialog open={Boolean(resetTarget)} onOpenChange={open => {
+  if (!open) {
+    setResetTarget(null);
+    setResetLinkResult(null);
+    setResetPassword('');
+  }
+}}>
+  <DialogContent className="sm:max-w-md">
     <DialogHeader>
-      <DialogTitle>{tAdmin('resetPassword', 'Reset Password')}</DialogTitle>
+      <DialogTitle className="flex items-center gap-2">
+        <KeyRound className="h-5 w-5 text-blue-600" />
+        Staff Password Reset
+      </DialogTitle>
     </DialogHeader>
-    <div className="space-y-4">
-      <p>{tAdmin('resetPasswordFor', 'Reset password for')} {resetTarget?.name}</p>
-      <Input type="password" placeholder={tAdmin('newPassword', 'New password')} value={resetPassword} onChange={e => setResetPassword(e.target.value)} autoComplete="new-password" />
+
+    <div className="space-y-4 pt-1">
+      <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs">
+        <p className="font-semibold text-slate-800">Target Account:</p>
+        <p className="text-slate-600 mt-0.5">{resetTarget?.name} <span className="text-slate-400">({resetTarget?.email})</span></p>
+      </div>
+
+      {/* Option 1: Send Secure Reset Link */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 space-y-3">
+        <div>
+          <h4 className="text-xs font-bold text-blue-950 uppercase tracking-wide">Secure Reset Link (Recommended)</h4>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Dispatches a secure, one-time password setup link directly to the staff member's email address.
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          onClick={() => void handleSendResetLink()}
+          disabled={resetSubmitting}
+          className="w-full bg-blue-700 hover:bg-blue-800 font-semibold text-xs h-9 gap-1.5"
+        >
+          <Send className="h-3.5 w-3.5" />
+          {resetSubmitting ? 'Dispatching Link...' : 'Send Reset Link to Staff Email'}
+        </Button>
+
+        {resetLinkResult && (
+          <div className="rounded-lg bg-white border border-blue-200 p-2.5 space-y-2">
+            <p className="text-[11px] font-bold text-slate-700">One-Time Reset URL Generated:</p>
+            <div className="flex items-center gap-1.5">
+              <Input
+                readOnly
+                value={resetLinkResult}
+                className="h-8 text-xs bg-slate-50 font-mono text-slate-700"
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCopyResetLink}
+                className="h-8 px-2.5 shrink-0 gap-1 text-xs"
+              >
+                {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {copiedLink ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Option 2: Direct Override */}
+      <div className="border-t border-slate-100 pt-3 space-y-2">
+        <label className="text-xs font-bold uppercase tracking-wide text-slate-600 block">
+          Direct Password Override (Manual)
+        </label>
+        <div className="flex gap-2">
+          <Input
+            type="password"
+            placeholder="Enter min. 8 characters"
+            value={resetPassword}
+            onChange={e => setResetPassword(e.target.value)}
+            autoComplete="new-password"
+            className="h-9 text-xs"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void handleResetPassword()}
+            disabled={resetSubmitting || !resetPassword}
+            className="h-9 shrink-0 text-xs font-semibold"
+          >
+            {resetSubmitting ? 'Updating...' : 'Set Password'}
+          </Button>
+        </div>
+      </div>
     </div>
-    <DialogFooter>
-      <Button variant="outline" onClick={() => setResetTarget(null)}>{tAdmin('cancel', 'Cancel')}</Button>
-      <Button onClick={() => void handleResetPassword()} disabled={resetSubmitting}>{resetSubmitting ? tAdmin('resetting', 'Resetting…') : tAdmin('reset', 'Reset')}</Button>
+
+    <DialogFooter className="pt-2">
+      <Button variant="outline" onClick={() => {
+        setResetTarget(null);
+        setResetLinkResult(null);
+        setResetPassword('');
+      }}>
+        {tAdmin('close', 'Close')}
+      </Button>
     </DialogFooter>
   </DialogContent>
 </Dialog>

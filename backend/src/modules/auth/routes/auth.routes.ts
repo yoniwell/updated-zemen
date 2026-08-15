@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { validate } from '../../../middleware/validate.middleware';
-import { loginSchema } from '../validation/auth.schema';
+import { loginSchema, forgotPasswordSchema, verifyResetTokenSchema, resetPasswordSchema } from '../validation/auth.schema';
 import { authenticate } from '../../../middleware/auth.middleware';
 
 export const createAuthRoutes = (authController: AuthController): Router => {
@@ -11,6 +11,11 @@ export const createAuthRoutes = (authController: AuthController): Router => {
   router.post('/login', validate({ body: loginSchema }), authController.login);
   router.post('/logout', authController.logout);
   router.post('/refresh', authController.refresh);
+
+  // Staff Password Reset
+  router.post('/forgot-password', validate({ body: forgotPasswordSchema }), authController.forgotPassword);
+  router.post('/verify-reset-token', validate({ body: verifyResetTokenSchema }), authController.verifyResetToken);
+  router.post('/reset-password', validate({ body: resetPasswordSchema }), authController.resetPassword);
   
   // Protected
   router.get('/me', authenticate, authController.getMe);

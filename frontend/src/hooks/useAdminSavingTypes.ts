@@ -4,6 +4,7 @@ import { adminFetch } from '@/lib/adminApi';
 export type AdminSavingType = {
   id: string;
   name: string;
+  category?: string | null;
   description?: string;
   isActive: boolean;
 };

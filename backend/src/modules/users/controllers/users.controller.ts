@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UsersService } from '../services/users.service';
+import { authResetService } from '../../auth/services/auth-reset.service';
 import { AppError } from '../../../common/errors/AppError';
 import { UsersMapper } from '../mappers/users.mapper';
 import { sendResponse } from '../../../common/responses/response.helper';
@@ -93,6 +94,16 @@ export class UsersController {
     try {
       const result = await this.usersService.inviteUser(req.params.id as string, req.user!.id as string);
       sendResponse(res, 200, { success: true, ...result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  sendResetLink = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : undefined);
+      const result = await authResetService.adminTriggerResetLink(req.params.id as string, req.user!.id as string, origin);
+      sendResponse(res, 200, result);
     } catch (error) {
       next(error);
     }

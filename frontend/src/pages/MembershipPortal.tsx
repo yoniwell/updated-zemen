@@ -20,7 +20,7 @@ const stepFields: Record<number, (keyof MembershipFormInput)[]> = {
   2: ['phone', 'firstName', 'fathersName', 'grandfathersName'],
   3: ['idType', 'idNumber', 'idFrontName', 'idBackName'],
   4: ['applicantPhotoName', 'filledFormName'],
-  5: ['membershipPaymentAmount', 'membershipTransactionRef', 'membershipPaymentProofName', 'savingType', 'savingPaymentAmount', 'savingTransactionRef', 'savingProofName', 'preferredBranch', 'termsAccepted'],
+  5: ['membershipPaymentAmount', 'membershipTransactionRef', 'membershipPaymentProofName', 'savingType', 'savingCategory', 'savingPaymentAmount', 'savingTransactionRef', 'savingProofName', 'preferredBranch', 'termsAccepted'],
 };
 
 const initialValues: Partial<MembershipFormInput> = {
@@ -40,6 +40,7 @@ const initialValues: Partial<MembershipFormInput> = {
   membershipTransactionRef: '',
   membershipPaymentProofName: '',
   savingType: undefined,
+  savingCategory: 'Standard',
   savingPaymentAmount: undefined,
   savingTransactionRef: '',
   savingProofName: '',
@@ -210,16 +211,59 @@ export default function MembershipPortal() {
     setOtpHint(null);
   }, [values.email]);
 
-  const selectedSavingTypeObj = useMemo(() => {
-    if (!values.savingType) return null;
-    return savingTypes.find((st) => 
-      st.name.toLowerCase().trim() === values.savingType.toLowerCase().trim() || st.id === values.savingType
-    ) || null;
+  const distinctSavingTypeNames = useMemo(() => {
+    const names = new Set<string>();
+    savingTypes.forEach((st) => {
+      if (st.name?.trim()) names.add(st.name.trim());
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [savingTypes]);
+
+  const availableCategoriesForSelectedType = useMemo(() => {
+    if (!values.savingType) return [];
+    const matching = savingTypes.filter(
+      (st) => st.name.toLowerCase().trim() === values.savingType.toLowerCase().trim()
+    );
+    const cats = new Set<string>();
+    matching.forEach((st) => {
+      cats.add(st.category?.trim() || 'Standard');
+    });
+    return Array.from(cats);
   }, [savingTypes, values.savingType]);
 
+  const selectedSavingTypeObj = useMemo(() => {
+    if (!values.savingType) return null;
+    const targetCategory = values.savingCategory?.trim() || 'Standard';
+
+    const exactMatch = savingTypes.find(
+      (st) =>
+        st.name.toLowerCase().trim() === values.savingType.toLowerCase().trim() &&
+        (st.category?.trim() || 'Standard').toLowerCase() === targetCategory.toLowerCase()
+    );
+    if (exactMatch) return exactMatch;
+
+    return savingTypes.find(
+      (st) => st.name.toLowerCase().trim() === values.savingType.toLowerCase().trim()
+    ) || null;
+  }, [savingTypes, values.savingType, values.savingCategory]);
+
   useEffect(() => {
-    if (selectedSavingTypeObj?.membershipFee != null) {
-      setValue('membershipPaymentAmount', selectedSavingTypeObj.membershipFee);
+    if (!values.savingType) return;
+    const categories = availableCategoriesForSelectedType;
+    if (categories.length > 0) {
+      if (!values.savingCategory || !categories.includes(values.savingCategory)) {
+        setValue('savingCategory', categories[0]);
+      }
+    } else {
+      setValue('savingCategory', 'Standard');
+    }
+  }, [values.savingType, availableCategoriesForSelectedType, values.savingCategory, setValue]);
+
+  useEffect(() => {
+    if (selectedSavingTypeObj) {
+      if (selectedSavingTypeObj.membershipFee != null) {
+        setValue('membershipPaymentAmount', selectedSavingTypeObj.membershipFee);
+      }
     }
   }, [selectedSavingTypeObj, setValue]);
 
@@ -251,10 +295,11 @@ export default function MembershipPortal() {
       ['Membership Payment (ETB)', Number(values.membershipPaymentAmount ?? 0)],
       ['Membership Payment Ref', values.membershipTransactionRef || '-'],
       ['Saving Type', values.savingType || '-'],
+      ['Saving Category', values.savingCategory || selectedSavingTypeObj?.category || (values.savingType ? 'Standard' : '-')],
       ['Saving Payment (ETB)', Number(values.savingPaymentAmount ?? 0)],
       ['Saving Transaction Ref', values.savingTransactionRef || '-'],
     ],
-    [values]
+    [values, selectedSavingTypeObj]
   );
 
   const savingAmountValidationError = useMemo(() => {
@@ -263,11 +308,12 @@ export default function MembershipPortal() {
     if (amtStr === undefined || amtStr === null || String(amtStr).trim() === '') return undefined;
     const amt = Number(amtStr);
     if (isNaN(amt)) return 'Please enter a valid numeric amount';
+    const tierLabel = `${selectedSavingTypeObj.name} (${selectedSavingTypeObj.category || 'Standard'})`;
     if (selectedSavingTypeObj.minAmount != null && amt < selectedSavingTypeObj.minAmount) {
-      return `Saving payment amount must be at least ${selectedSavingTypeObj.minAmount.toLocaleString()} ETB for ${selectedSavingTypeObj.name}`;
+      return `Saving payment amount must be at least ${selectedSavingTypeObj.minAmount.toLocaleString()} ETB for ${tierLabel}`;
     }
     if (selectedSavingTypeObj.maxAmount != null && amt > selectedSavingTypeObj.maxAmount) {
-      return `Saving payment amount cannot exceed ${selectedSavingTypeObj.maxAmount.toLocaleString()} ETB for ${selectedSavingTypeObj.name}`;
+      return `Saving payment amount cannot exceed ${selectedSavingTypeObj.maxAmount.toLocaleString()} ETB for ${tierLabel}`;
     }
     return undefined;
   }, [selectedSavingTypeObj, values.savingPaymentAmount]);
@@ -324,6 +370,7 @@ export default function MembershipPortal() {
         membershipPaymentAmount: data.membershipPaymentAmount,
         membershipTransactionRef: data.membershipTransactionRef || undefined,
         savingType: data.savingType || undefined,
+        savingCategory: data.savingCategory || selectedSavingTypeObj?.category || (data.savingType ? 'Standard' : undefined),
         savingPaymentAmount: data.savingPaymentAmount,
         savingTransactionRef: data.savingTransactionRef || undefined,
         termsAccepted: data.termsAccepted,
@@ -736,12 +783,51 @@ export default function MembershipPortal() {
             <div className="grid gap-4 md:grid-cols-2">
               {/* --- Saving Type first --- */}
               <Field label="Saving Type" error={errorText('savingType')}>
-                <select className="h-11 w-full rounded-md border px-3" {...register('savingType')}>
+                <select
+                  className="h-11 w-full rounded-md border px-3"
+                  {...register('savingType')}
+                  onChange={(e) => {
+                    const selectedVal = e.target.value;
+                    setValue('savingType', selectedVal);
+                    const matchingCats = savingTypes
+                      .filter((st) => st.name.toLowerCase().trim() === selectedVal.toLowerCase().trim())
+                      .map((st) => st.category?.trim() || 'Standard');
+                    if (matchingCats.length > 0) {
+                      setValue('savingCategory', matchingCats[0]);
+                    }
+                  }}
+                >
                   <option value="">Select saving type</option>
-                  {savingTypes.map(st => (
-                    <option key={st.id} value={st.name}>{st.name}</option>
+                  {distinctSavingTypeNames.map((stName) => (
+                    <option key={stName} value={stName}>{stName}</option>
                   ))}
                 </select>
+              </Field>
+
+              {/* --- Saving Category Dropdown --- */}
+              <Field label="Saving Category / Tier" error={errorText('savingCategory')}>
+                <select
+                  className="h-11 w-full rounded-md border px-3 font-semibold text-slate-800"
+                  {...register('savingCategory')}
+                  disabled={!values.savingType || availableCategoriesForSelectedType.length <= 1}
+                  value={values.savingCategory || (availableCategoriesForSelectedType[0] ?? 'Standard')}
+                  onChange={(e) => setValue('savingCategory', e.target.value)}
+                >
+                  {availableCategoriesForSelectedType.length === 0 ? (
+                    <option value="Standard">Standard</option>
+                  ) : (
+                    availableCategoriesForSelectedType.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))
+                  )}
+                </select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  {values.savingType 
+                    ? availableCategoriesForSelectedType.length > 1
+                      ? `Select from ${availableCategoriesForSelectedType.length} available category tiers for ${values.savingType}.`
+                      : `Category tier: ${availableCategoriesForSelectedType[0] || 'Standard'}`
+                    : 'Select a saving type above to choose category tier.'}
+                </p>
               </Field>
 
               {/* --- Membership fee (auto-filled from saving type, editable as fallback) --- */}
@@ -751,12 +837,12 @@ export default function MembershipPortal() {
                   step="0.01"
                   min="0"
                   readOnly={selectedSavingTypeObj?.membershipFee != null}
-                  className={selectedSavingTypeObj?.membershipFee != null ? 'bg-slate-100 cursor-not-allowed text-slate-600' : ''}
+                  className={selectedSavingTypeObj?.membershipFee != null ? 'bg-slate-100 cursor-not-allowed text-slate-600 font-bold' : ''}
                   {...register('membershipPaymentAmount', { valueAsNumber: true })}
                 />
                 <p className="mt-1.5 text-xs text-slate-500">
                   {selectedSavingTypeObj?.membershipFee != null
-                    ? `Auto-set from saving type: ${selectedSavingTypeObj.name} — ${selectedSavingTypeObj.membershipFee.toLocaleString()} ETB`
+                    ? `Auto-set from ${selectedSavingTypeObj.name} (${selectedSavingTypeObj.category || 'Standard'}) — ${selectedSavingTypeObj.membershipFee.toLocaleString()} ETB`
                     : selectedSavingTypeObj
                       ? 'No fee configured for this saving type — enter the amount manually.'
                       : 'Select a saving type above to auto-fill this amount.'}
@@ -778,7 +864,7 @@ export default function MembershipPortal() {
               />
 
               {/* --- Saving payment amount --- */}
-              <Field label="Saving Payment Amount" error={errorText('savingPaymentAmount')}>
+              <Field label="Saving Payment Amount (ETB)" error={errorText('savingPaymentAmount')}>
                 <Input
                   type="number"
                   step="0.01"
@@ -790,16 +876,12 @@ export default function MembershipPortal() {
                     <span className="font-extrabold text-sm">⚠</span> {errorText('savingPaymentAmount')}
                   </p>
                 ) : (
-                  (() => {
-                    const selectedType = savingTypes.find((st) => st.name === watch('savingType') || st.id === watch('savingType'));
-                    if (!selectedType || (selectedType.minAmount == null && selectedType.maxAmount == null)) return null;
-                    return (
-                      <p className="mt-1 text-xs font-medium text-slate-600 bg-slate-50 p-2 rounded border border-slate-200">
-                        {selectedType.minAmount != null && `Minimum required contribution: ${selectedType.minAmount.toLocaleString()} ETB. `}
-                        {selectedType.maxAmount != null && `Maximum limit: ${selectedType.maxAmount.toLocaleString()} ETB.`}
-                      </p>
-                    );
-                  })()
+                  selectedSavingTypeObj && (selectedSavingTypeObj.minAmount != null || selectedSavingTypeObj.maxAmount != null) && (
+                    <p className="mt-1 text-xs font-medium text-slate-600 bg-slate-50 p-2 rounded border border-slate-200">
+                      {selectedSavingTypeObj.minAmount != null && `Minimum required contribution: ${selectedSavingTypeObj.minAmount.toLocaleString()} ETB. `}
+                      {selectedSavingTypeObj.maxAmount != null && `Maximum limit: ${selectedSavingTypeObj.maxAmount.toLocaleString()} ETB.`}
+                    </p>
+                  )
                 )}
               </Field>
 

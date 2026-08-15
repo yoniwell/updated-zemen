@@ -11,6 +11,7 @@ export interface ApplyMembershipDto {
   membershipPaymentAmount?: number;
   membershipTransactionRef?: string;
   savingType?: string;
+  savingCategory?: string;
   savingPaymentAmount?: number;
   savingTransactionRef?: string;
 }
@@ -35,6 +36,7 @@ export interface UpdateMembershipDto {
   membershipPaymentAmount?: number;
   membershipTransactionRef?: string;
   savingType?: string;
+  savingCategory?: string;
   savingPaymentAmount?: number;
   savingTransactionRef?: string;
 }

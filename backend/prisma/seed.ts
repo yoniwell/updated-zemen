@@ -20,9 +20,9 @@ async function main() {
 
   for (const st of savingTypes) {
     await prisma.savingTypeConfig.upsert({
-      where: { name: st.name },
+      where: { name_category: { name: st.name, category: 'Standard' } },
       update: {},
-      create: { name: st.name, isActive: true },
+      create: { name: st.name, category: 'Standard', isActive: true },
     });
   }
   console.log(`✅ Seeded ${savingTypes.length} saving types`);
@@ -41,9 +41,9 @@ async function main() {
 
   for (const lt of loanTypes) {
     await prisma.loanTypeConfig.upsert({
-      where: { name: lt.name },
+      where: { name_category: { name: lt.name, category: 'Standard' } },
       update: { minAmount: lt.minAmount, maxAmount: lt.maxAmount, minTenure: lt.minTenure, maxTenure: lt.maxTenure },
-      create: { name: lt.name, isActive: true, minAmount: lt.minAmount, maxAmount: lt.maxAmount, minTenure: lt.minTenure, maxTenure: lt.maxTenure },
+      create: { name: lt.name, category: 'Standard', isActive: true, minAmount: lt.minAmount, maxAmount: lt.maxAmount, minTenure: lt.minTenure, maxTenure: lt.maxTenure },
     });
   }
   console.log(`✅ Seeded ${loanTypes.length} loan types`);

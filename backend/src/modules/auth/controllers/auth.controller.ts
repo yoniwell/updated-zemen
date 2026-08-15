@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomBytes } from 'crypto';
 import { AuthService } from '../services/auth.service';
+import { authResetService } from '../services/auth-reset.service';
 import { AUTH_CONSTANTS } from '../constants/auth.constants';
 import { sendResponse } from '../../../common/responses/response.helper';
 import { LoginDto } from '../dto/auth.dto';
@@ -116,6 +117,40 @@ export class AuthController {
       }
       const user = await this.authService.getMe(req.user.id);
       sendResponse(res, 200, { user });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { email } = req.body;
+      const ipAddress = getClientIp(req);
+      const userAgent = req.headers['user-agent'];
+      const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : undefined);
+      const result = await authResetService.requestPasswordReset(email, ipAddress, userAgent, origin);
+      sendResponse(res, 200, result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  verifyResetToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { token, email } = req.body;
+      const result = await authResetService.verifyResetToken(token, email);
+      sendResponse(res, 200, result);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { token, email, password } = req.body;
+      const ipAddress = getClientIp(req);
+      const result = await authResetService.completePasswordReset(token, email, password, ipAddress);
+      sendResponse(res, 200, result);
     } catch (error) {
       next(error);
     }

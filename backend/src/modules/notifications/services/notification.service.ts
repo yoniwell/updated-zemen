@@ -5,6 +5,7 @@ type NotificationPayload = {
   to: string;
   subject: string;
   message: string;
+  html?: string;
   channel: 'EMAIL' | 'SMS';
 };
 
@@ -172,6 +173,7 @@ export async function sendNotification(payload: NotificationPayload): Promise<{ 
       to: payload.to,
       subject: payload.subject,
       text: payload.message,
+      ...(payload.html ? { html: payload.html } : {}),
     });
 
     const durationMs = Date.now() - startTime;

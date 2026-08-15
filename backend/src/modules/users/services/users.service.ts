@@ -18,17 +18,18 @@ export class UsersService {
   }
 
   async createUser(dto: CreateUserDto, executorId: string) {
-    const existing = await this.usersRepository.findByEmail(dto.email);
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existing = await this.usersRepository.findByEmail(normalizedEmail);
     if (existing) {
       throw new AppError('Email is already registered', 400);
     }
 
-    const tempPassword = this.generateTempPassword();
-    const passwordHash = await this.hashPassword(tempPassword);
+    const passwordToHash = (dto.password && dto.password.trim()) ? dto.password.trim() : this.generateTempPassword();
+    const passwordHash = await this.hashPassword(passwordToHash);
 
     const data: Prisma.AdminUserCreateInput = {
-      name: dto.name,
-      email: dto.email,
+      name: dto.name.trim(),
+      email: normalizedEmail,
       role: dto.role,
       passwordHash,
       isActive: dto.isActive !== undefined ? dto.isActive : true,
@@ -181,9 +182,8 @@ export class UsersService {
       throw new AppError('User not found', 404);
     }
 
-    // In a real application, you would generate a token and send an email.
-    // For now, we'll simulate the invite and return a dummy URL.
-    const inviteUrl = `http://localhost:5173/admin/login?invite=${user.id}`;
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '');
+    const inviteUrl = `${frontendUrl}/admin/login?invite=${user.id}`;
     const verificationUrl = inviteUrl;
 
     await this.usersRepository.createAuditLog({

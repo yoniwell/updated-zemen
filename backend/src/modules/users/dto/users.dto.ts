@@ -3,6 +3,7 @@ import { AdminRole } from '@prisma/client';
 export interface CreateUserDto {
   name: string;
   email: string;
+  password?: string;
   role: AdminRole;
   branchId?: string;
   isActive?: boolean;

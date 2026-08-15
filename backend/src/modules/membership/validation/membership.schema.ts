@@ -12,6 +12,7 @@ export const applyMembershipSchema = z.object({
   membershipPaymentAmount: z.number().optional(),
   membershipTransactionRef: z.string().optional(),
   savingType: z.string().optional(),
+  savingCategory: z.string().optional(),
   savingPaymentAmount: z.number().optional(),
   savingTransactionRef: z.string().optional(),
 });
@@ -35,6 +36,7 @@ export const updateMembershipSchema = z.object({
   membershipPaymentAmount: z.number().optional(),
   membershipTransactionRef: z.string().optional(),
   savingType: z.string().optional(),
+  savingCategory: z.string().optional(),
   savingPaymentAmount: z.number().optional(),
   savingTransactionRef: z.string().optional(),
 });

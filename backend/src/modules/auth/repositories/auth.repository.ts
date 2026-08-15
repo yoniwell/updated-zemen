@@ -5,8 +5,8 @@ export class AuthRepository {
   private db: PrismaClient = prisma;
 
   async findUserByEmail(email: string) {
-    return this.db.adminUser.findUnique({
-      where: { email },
+    return this.db.adminUser.findFirst({
+      where: { email: { equals: email.trim(), mode: 'insensitive' } },
       include: { branch: true },
     });
   }

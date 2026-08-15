@@ -265,6 +265,7 @@ export async function submitPublicInquiry(payload: PublicInquiryInput): Promise<
 export type ConfigSavingType = {
   id: string;
   name: string;
+  category?: string | null;
   description?: string;
   isActive: boolean;
   minAmount?: number | null;
@@ -275,7 +276,8 @@ export type ConfigSavingType = {
 export type ConfigLoanType = {
   id: string;
   name: string;
-  description: string;
+  category?: string | null;
+  description?: string;
   isActive: boolean;
   minAmount?: number | null;
   maxAmount?: number | null;

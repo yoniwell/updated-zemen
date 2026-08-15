@@ -25,6 +25,7 @@ const loanBaseSchema = z.object({
 
   // Loan Information
   loanType: z.string().trim().min(1, 'Please select a loan product'),
+  loanCategory: z.string().trim().optional(),
   branchId: z.string().trim().min(1, 'Please select a branch'),
   amount: z.preprocess((v) => {
     if (typeof v === 'string' && v.trim() === '') return undefined;
@@ -62,7 +63,7 @@ export type LoanFormInput = z.input<typeof loanSchema>;
 export const loanStepSchemas = {
   1: loanBaseSchema.pick({ email: true, otpCode: true }),
   2: loanBaseSchema.pick({ firstName: true, fathersName: true, grandfathersName: true, membershipNo: true, phone: true, idType: true, idNumber: true, maritalStatus: true }),
-  3: loanBaseSchema.pick({ loanType: true, branchId: true, amount: true, tenure: true }),
+  3: loanBaseSchema.pick({ loanType: true, loanCategory: true, branchId: true, amount: true, tenure: true }),
   4: loanBaseSchema.pick({ loanApplicationLetter: true, loanRequestForm: true, personalPhoto: true, idFrontPhoto: true, idBackPhoto: true, marriageCertificate: true }),
   5: loanBaseSchema.pick({ collateralType: true, collateralDocument: true, collateralDesc: true }),
   6: loanBaseSchema.pick({ businessPlan: true }),

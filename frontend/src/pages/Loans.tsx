@@ -72,6 +72,7 @@ export default function Loans({ onNavigate }: LoansProps) {
         return {
           id: config.id,
           name: config.name,
+          category: config.category || 'Standard',
           type: inferLoanType(config.name),
           interestRate: matchedCms?.interestRate || 'Standard Rate',
           minAmount: config.minAmount ?? null,
@@ -85,6 +86,7 @@ export default function Loans({ onNavigate }: LoansProps) {
     return cmsLoanProducts.map((loan) => ({
       id: loan.id,
       name: loan.name,
+      category: 'Standard',
       type: inferLoanType(loan.name),
       interestRate: loan.interestRate || 'Standard Rate',
       minAmount: null,
@@ -258,6 +260,7 @@ export default function Loans({ onNavigate }: LoansProps) {
                 <thead>
                   <tr className="bg-blue-950 text-white text-[9px] sm:text-xs font-black uppercase tracking-wider border-b border-blue-900">
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">{tPublic('loanTypeCol', 'Loan Type')}</th>
+                    <th className="py-2.5 px-3 sm:py-3.5 sm:px-5">{tPublic('categoryCol', 'Category')}</th>
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('loanRangeCol', 'Loan Range')}</th>
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right whitespace-nowrap">{tPublic('tenureCol', 'Tenure')}</th>
                     <th className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-center whitespace-nowrap">{tPublic('interestRateCol', 'Interest')}</th>
@@ -274,6 +277,11 @@ export default function Loans({ onNavigate }: LoansProps) {
                           </div>
                           <span>{item.name}</span>
                         </div>
+                      </td>
+                      <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 font-semibold text-blue-700 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] sm:text-xs font-bold text-blue-700 border border-blue-100">
+                          {item.category || 'Standard'}
+                        </span>
                       </td>
                       <td className="py-2.5 px-3 sm:py-3.5 sm:px-5 text-right font-extrabold text-blue-900 whitespace-nowrap">
                         {item.minAmount ? `${item.minAmount.toLocaleString()} ETB` : 'Min 1k'} – {item.maxAmount ? `${item.maxAmount.toLocaleString()} ETB` : 'Flexible'}
@@ -297,7 +305,7 @@ export default function Loans({ onNavigate }: LoansProps) {
                   ))}
                   {loansList.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-500 font-medium text-xs">
+                      <td colSpan={6} className="py-6 text-center text-slate-500 font-medium text-xs">
                         Loading loan types...
                       </td>
                     </tr>

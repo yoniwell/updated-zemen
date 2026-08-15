@@ -29,6 +29,7 @@ import Terms from './pages/Terms';
 import ConsentDisclosure from './pages/ConsentDisclosure';
 import AdminLayout from './pages/admin/AdminLayout';
 import AdminLogin from './pages/admin/AdminLogin';
+import AdminResetPassword from './pages/admin/AdminResetPassword';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import MembershipQueue from './pages/admin/MembershipQueue';
 import LoanQueue from './pages/admin/LoanQueue';
@@ -204,6 +205,7 @@ function AppContent() {
           <Route path="/consent-disclosure" element={<ConsentDisclosure />} />
 
           <Route path="/admin/login" element={<RedirectIfAuthenticated><AdminLogin /></RedirectIfAuthenticated>} />
+          <Route path="/admin/reset-password" element={<AdminResetPassword />} />
           <Route path="/admin" element={<RequireAdminAuth><AdminLayout /></RequireAdminAuth>}>
             <Route index element={<RequireAdminModule module="dashboard"><AdminDashboard /></RequireAdminModule>} />
             <Route path="dashboard" element={<RequireAdminModule module="dashboard"><AdminDashboard /></RequireAdminModule>} />
